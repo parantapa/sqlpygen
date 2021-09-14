@@ -1,0 +1,118 @@
+"""{{module}}
+
+This module has been generated with SqlPyGen.
+"""
+
+from typing import NewType, Sequence, cast
+
+import sqlite3
+ConnectionType = sqlite3.Connection
+
+{% macro comma_sep(loop) -%}
+{% if not loop.last %}, {% endif %}
+{%- endmacro %}
+
+{% for stmt in import_stmts %}
+from {{ stmt.module }} import {% for name in stmt.names %}{{ name }}{{ comma_sep(loop) }}{% endfor %}
+
+{% endfor %}
+
+{% for type in types %}
+{{ type.name }} = NewType("{{ type.name }}", {{ type.old_type }})
+{% endfor %}
+
+{% macro expand_params(params) -%}
+{% for param in params -%}
+{{ param.name }}: {{ param.type }}{{ comma_sep(loop) }}
+{%- endfor %}
+{%- endmacro %}
+
+{% macro do_expand_return(return_) -%}
+list[tuple[{% for etype in return_ %}{{ etype }}{{ comma_sep(loop) }}{% endfor %}]]
+{%- endmacro %}
+
+{% macro expand_return(return_) -%}
+{% if return_ %}{{ do_expand_return(return_) }}{% else %}None{% endif %}
+{%- endmacro %}
+
+{% macro do_expand_return_nt(return_) -%}
+Sequence[tuple[{% for etype in return_ %}{{ etype }}{{ comma_sep(loop) }}{% endfor %}]]
+{%- endmacro %}
+
+{% macro expand_return_nt(return_) -%}
+{% if return_ %}{{ do_expand_return_nt(return_) }}{% else %}None{% endif %}
+{%- endmacro %}
+
+def create_schema(connection: ConnectionType) -> None:
+    """Create the table schema."""
+    with connection:
+        cursor = connection.cursor()
+
+        {% for schema in schemas %}
+        # schema: {{ schema.name }}
+        try:
+            sql = """
+            {{ schema.sql | indent(width=12, first=False) }}
+            """
+            cursor.execute(sql)
+        except Exception as e:
+            raise RuntimeError("An unexpected exception occurred when creating schema: {{ schema.name }}") from e
+        {% endfor %}
+
+{% for query in queries %}
+def {{ query.name }}(connection: ConnectionType, {{ expand_params(query.params) }}) -> {{ expand_return(query.return_) }}:
+    """Query {{query.name}} with transaction."""
+    {% if query.params %}
+    query_args = {
+        {% for param in query.params %}
+        "{{ param.name }}": {{ param.name }},
+        {% endfor %}
+    }
+    {% endif %}
+
+    with connection:
+        cursor = connection.cursor()
+        try:
+            sql = """
+            {{ query.sql | indent(width=12, first=False) }}
+            """
+            {% if query.params %}
+            cursor.execute(sql, query_args)
+            {% else %}
+            cursor.execute(sql)
+            {% endif %}
+
+            {% if query.return_ %}
+            return cursor.fetchall()
+            {% endif %}
+        except Exception as e:
+            raise RuntimeError("An unexpected exception occurred while executing query: {{ query.name }}") from e
+
+def {{ query.name }}_nt(connection: ConnectionType, {{ expand_params(query.params) }}) -> {{ expand_return_nt(query.return_) }}:
+    """Query {{query.name}} no implied transaction."""
+    {% if query.params %}
+    query_args = {
+        {% for param in query.params %}
+        "{{ param.name }}": {{ param.name }},
+        {% endfor %}
+    }
+    {% endif %}
+
+    cursor = connection.cursor()
+    try:
+        sql = """
+        {{ query.sql | indent(width=8, first=False) }}
+        """
+        {% if query.params %}
+        cursor.execute(sql, query_args)
+        {% else %}
+        cursor.execute(sql)
+        {% endif %}
+
+        {% if query.return_ %}
+        return cast({{ expand_return_nt(query.return_) }}, cursor)
+        {% endif %}
+    except Exception as e:
+        raise RuntimeError("An unexpected exception occurred while executing query: {{ query.name }}") from e
+
+{% endfor %}
