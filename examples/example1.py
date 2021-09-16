@@ -10,22 +10,36 @@ import sqlite3
 ConnectionType = sqlite3.Connection
 
 
+SCHEMA = {}
+SCHEMA[
+    "table_stocks"
+] = """
+CREATE TABLE stocks (
+    date text,
+    trans text,
+    symbol text,
+    qty real,
+    price real
+)
+"""
+
+
+QUERY = {}
+QUERY[
+    "insert_into_stocks"
+] = """
+INSERT INTO stocks VALUES (?,?,?,?,?)
+"""
+
+
 def create_schema(connection: ConnectionType) -> None:
     """Create the table schema."""
     with connection:
         cursor = connection.cursor()
 
-        # schema: table_stocks
         try:
-            sql = """
-            CREATE TABLE stocks (
-                date text,
-                trans text,
-                symbol text,
-                qty real,
-                price real
-            )
-            """
+            sql = SCHEMA["table_stocks"]
+
             cursor.execute(sql)
         except Exception as e:
             raise RuntimeError(
@@ -42,20 +56,13 @@ def insert_into_stocks(
     price: float,
 ) -> None:
     """Query insert_into_stocks with transaction."""
-    query_args = {
-        "date": date,
-        "trans": trans,
-        "symbol": symbol,
-        "qty": qty,
-        "price": price,
-    }
+    query_args = [date, trans, symbol, qty, price]
 
     with connection:
         cursor = connection.cursor()
         try:
-            sql = """
-            INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price)
-            """
+            sql = QUERY["insert_into_stocks"]
+
             cursor.execute(sql, query_args)
 
         except Exception as e:
@@ -73,19 +80,12 @@ def insert_into_stocks_nt(
     price: float,
 ) -> None:
     """Query insert_into_stocks no implied transaction."""
-    query_args = {
-        "date": date,
-        "trans": trans,
-        "symbol": symbol,
-        "qty": qty,
-        "price": price,
-    }
+    query_args = [date, trans, symbol, qty, price]
 
     cursor = connection.cursor()
     try:
-        sql = """
-        INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price)
-        """
+        sql = QUERY["insert_into_stocks"]
+
         cursor.execute(sql, query_args)
 
     except Exception as e:

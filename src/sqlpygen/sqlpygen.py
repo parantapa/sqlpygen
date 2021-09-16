@@ -4,7 +4,7 @@ from importlib.resources import read_text
 
 import black
 from lark import Lark, Transformer, UnexpectedToken
-from jinja2 import Template, StrictUndefined
+from jinja2 import Template, StrictUndefined, TemplateSyntaxError
 
 
 class SqlPyGenTransformer(Transformer):
@@ -84,9 +84,12 @@ def get_parser() -> Lark:
 def get_template() -> Template:
     """Return the code generation template."""
     tpl_text = read_text("sqlpygen", "sqlpygen.jinja2")
-    tpl_obj = Template(
-        tpl_text, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined
-    )
+    try:
+        tpl_obj = Template(
+            tpl_text, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined
+        )
+    except TemplateSyntaxError as e:
+        raise ValueError(f"Syntax error in template line {e.lineno}") from e
     return tpl_obj
 
 

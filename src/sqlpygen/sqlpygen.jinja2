@@ -43,17 +43,31 @@ Sequence[tuple[{% for etype in return_ %}{{ etype }}{{ comma_sep(loop) }}{% endf
 {% if return_ %}{{ do_expand_return_nt(return_) }}{% else %}None{% endif %}
 {%- endmacro %}
 
+SCHEMA = {}
+{% for schema in schemas %}
+SCHEMA["{{ schema.name }}"] = """
+{{ schema.sql }}
+"""
+
+{% endfor %}
+
+QUERY = {}
+{% for query in queries %}
+QUERY["{{ query.name }}"] = """
+{{ query.sql }}
+"""
+
+{% endfor %}
+
 def create_schema(connection: ConnectionType) -> None:
     """Create the table schema."""
     with connection:
         cursor = connection.cursor()
 
         {% for schema in schemas %}
-        # schema: {{ schema.name }}
         try:
-            sql = """
-            {{ schema.sql | indent(width=12, first=False) }}
-            """
+            sql = SCHEMA["{{ schema.name }}"]
+
             cursor.execute(sql)
         except Exception as e:
             raise RuntimeError("An unexpected exception occurred when creating schema: {{ schema.name }}") from e
@@ -63,19 +77,14 @@ def create_schema(connection: ConnectionType) -> None:
 def {{ query.name }}(connection: ConnectionType, {{ expand_params(query.params) }}) -> {{ expand_return(query.return_) }}:
     """Query {{query.name}} with transaction."""
     {% if query.params %}
-    query_args = {
-        {% for param in query.params %}
-        "{{ param.name }}": {{ param.name }},
-        {% endfor %}
-    }
+    query_args = [{% for param in query.params %}{{ param.name }}{{ comma_sep(loop) }}{% endfor %}]
     {% endif %}
 
     with connection:
         cursor = connection.cursor()
         try:
-            sql = """
-            {{ query.sql | indent(width=12, first=False) }}
-            """
+            sql = QUERY["{{ query.name }}"]
+
             {% if query.params %}
             cursor.execute(sql, query_args)
             {% else %}
@@ -91,18 +100,13 @@ def {{ query.name }}(connection: ConnectionType, {{ expand_params(query.params) 
 def {{ query.name }}_nt(connection: ConnectionType, {{ expand_params(query.params) }}) -> {{ expand_return_nt(query.return_) }}:
     """Query {{query.name}} no implied transaction."""
     {% if query.params %}
-    query_args = {
-        {% for param in query.params %}
-        "{{ param.name }}": {{ param.name }},
-        {% endfor %}
-    }
+    query_args = [{% for param in query.params %}{{ param.name }}{{ comma_sep(loop) }}{% endfor %}]
     {% endif %}
 
     cursor = connection.cursor()
     try:
-        sql = """
-        {{ query.sql | indent(width=8, first=False) }}
-        """
+        sql = QUERY["{{ query.name }}"]
+
         {% if query.params %}
         cursor.execute(sql, query_args)
         {% else %}
