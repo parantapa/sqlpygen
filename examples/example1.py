@@ -3,6 +3,7 @@
 This module has been generated with SqlPyGen.
 """
 
+from pprint import pprint
 from typing import NewType, Sequence, cast
 
 import sqlite3
@@ -92,3 +93,31 @@ def insert_into_stocks_nt(
         raise RuntimeError(
             "An unexpected exception occurred while executing query: insert_into_stocks"
         ) from e
+
+
+def explain_queries() -> None:
+    connection = sqlite3.connect(":memory:")
+    create_schema(connection)
+
+    with connection:
+        cursor = connection.cursor()
+
+        try:
+            sql = QUERY["insert_into_stocks"]
+            sql = "EXPLAIN " + sql
+
+            query_args = ["2006-01-05", "BUY", "RHAT", 100, 35.14]
+
+            cursor.execute(sql, query_args)
+
+            print("Query explnation for insert_into_stocks")
+            print("-" * 80)
+            pprint(cursor.fetchall())
+        except Exception as e:
+            raise RuntimeError(
+                "An unexpected exception occurred while executing query plan for: insert_into_stocks"
+            ) from e
+
+
+if __name__ == "__main__":
+    explain_queries()

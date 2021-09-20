@@ -12,5 +12,6 @@ CREATE TABLE stocks (
 
 -- query: insert_into_stocks
 -- params: date: str, trans: str, symbol: str, qty: float, price: float
+-- testargs: ('2006-01-05', 'BUY', 'RHAT', 100, 35.14)
 
 INSERT INTO stocks VALUES (?,?,?,?,?) ;

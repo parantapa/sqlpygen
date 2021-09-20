@@ -1,5 +1,6 @@
 """Generate type annotated python from SQL."""
 
+from pprint import pprint
 from importlib.resources import read_text
 
 import black
@@ -12,6 +13,9 @@ class SqlPyGenTransformer(Transformer):
 
     CNAME = str
     MODULE_NAME = str
+    INT = int
+    FLOAT = float
+    QUOTED_STRING = str
 
     def SQL_STRING(self, t):
         return t.strip().rstrip(";").strip()
@@ -38,19 +42,24 @@ class SqlPyGenTransformer(Transformer):
         name, sql = ts
         return ("schemas", {"name": name, "sql": sql})
 
+    def testargs(self, ts):
+        return ("testargs", ts)
+
     def query(self, ts):
         name, sql = ts[0], ts[-1]
-        params, return_ = [], []
+        params, return_, testargs = [], [], []
         for typ, val in ts[1:-1]:
             if typ == "params":
                 params = val
             elif typ == "return_":
                 return_ = val
+            elif typ == "testargs":
+                testargs = val
             else:
                 raise ValueError(f"Unexpected child type: {typ=} {val=}")
         return (
             "queries",
-            {"name": name, "params": params, "return_": return_, "sql": sql},
+            {"name": name, "params": params, "return_": return_, "sql": sql, "testargs": testargs},
         )
 
     def import_stmt(self, ts):
@@ -93,7 +102,7 @@ def get_template() -> Template:
     return tpl_obj
 
 
-def generate(text: str) -> str:
+def generate(text: str, verbose: bool = False) -> str:
     """Generate python from annotated sql."""
     parser = get_parser()
     transformer = SqlPyGenTransformer()
@@ -109,7 +118,17 @@ def generate(text: str) -> str:
         msg = f"Error parsing input:\n{e}\n{err_line}\n{err_marker}"
         raise RuntimeError(msg)
 
+    if verbose:
+        print("Parse tree")
+        print("-" * 80)
+        print(parse_tree.pretty())
+
     trans_tree = transformer.transform(parse_tree)
+
+    if verbose:
+        print("Transformed tree")
+        print("-" * 80)
+        pprint(trans_tree)
 
     rendered_tree = template.render(**trans_tree)
     rendered_tree = black.format_str(rendered_tree, mode=black.Mode())

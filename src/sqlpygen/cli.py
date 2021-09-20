@@ -25,7 +25,11 @@ from .sqlpygen import generate
     required=True,
     help="Generated python file.",
 )
-def cli(input_file, output_file):
+@click.option(
+    "-v", "--verbose",
+    is_flag=True,
+    help="Print out intermediate results.")
+def cli(input_file, output_file, verbose):
     """SqlPyGen
 
     Generated type annotated python code from annotated SQL
@@ -35,7 +39,7 @@ def cli(input_file, output_file):
 
     input_ = input_file.read_text()
     try:
-        output = generate(input_)
+        output = generate(input_, verbose)
     except RuntimeError as e:
         click.secho(str(e), fg="red")
         sys.exit(1)
