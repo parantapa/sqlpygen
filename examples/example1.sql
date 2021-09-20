@@ -12,7 +12,6 @@ CREATE TABLE stocks (
 
 -- query: insert_into_stocks
 -- params: date: str, trans: str, symbol: str, qty: float, price: float
--- testargs: date='2006-01-05', trans='BUY', symbol='RHAT', qty=100, price=35.14
 
 INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price) ;
 

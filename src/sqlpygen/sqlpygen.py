@@ -13,9 +13,6 @@ class SqlPyGenTransformer(Transformer):
 
     CNAME = str
     MODULE_NAME = str
-    INT = int
-    FLOAT = float
-    QUOTED_STRING = str
 
     def SQL_STRING(self, t):
         return t.strip().rstrip(";").strip()
@@ -42,29 +39,20 @@ class SqlPyGenTransformer(Transformer):
         name, sql = ts
         return ("schemas", {"name": name, "sql": sql})
 
-    def vname_value(self, ts):
-        vname, value = ts
-        return {"name": vname, "value": value}
-
-    def testargs(self, ts):
-        return ("testargs", ts)
-
     def query(self, ts):
         name, sql = ts[0], ts[-1]
-        params, return_, testargs = [], [], []
+        params, return_ = [], []
         for typ, val in ts[1:-1]:
             if typ == "params":
                 params = val
             elif typ == "return_":
                 return_ = val
-            elif typ == "testargs":
-                testargs = val
             else:
                 raise ValueError(f"Unexpected child type: {typ=} {val=}")
 
         return (
             "queries",
-            {"name": name, "params": params, "return_": return_, "sql": sql, "testargs": testargs},
+            {"name": name, "params": params, "return_": return_, "sql": sql},
         )
 
     def import_stmt(self, ts):

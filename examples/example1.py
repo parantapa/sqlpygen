@@ -162,11 +162,11 @@ def explain_queries() -> None:
             sql = "EXPLAIN " + sql
 
             query_args = {
-                "date": "2006-01-05",
-                "trans": "BUY",
-                "symbol": "RHAT",
-                "qty": 100,
-                "price": 35.14,
+                "date": None,
+                "trans": None,
+                "symbol": None,
+                "qty": None,
+                "price": None,
             }
 
             cursor.execute(sql, query_args)

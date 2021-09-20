@@ -6,16 +6,12 @@ module: "--"  "module" ":" CNAME _NEWLINE
 import_stmt: "--" "from" MODULE_NAME "import" CNAME ("," CNAME)* _NEWLINE
 type: "--" "type" ":" CNAME "=" CNAME _NEWLINE
 schema: "--" "schema" ":" CNAME _NEWLINE sql
-query: "--" "query" ":" CNAME _NEWLINE params? return_? testargs? sql
+query: "--" "query" ":" CNAME _NEWLINE params? return_? sql
 
 params: "--" "params" ":" pname_ptype ("," pname_ptype)* _NEWLINE
 pname_ptype: CNAME ":" CNAME
 
 return_: "--" "return" ":" CNAME ("," CNAME)* _NEWLINE
-
-testargs: "--" "testargs" ":" vname_value ("," vname_value)* _NEWLINE
-vname_value: CNAME "=" value
-?value: INT|FLOAT|QUOTED_STRING
 
 ?sql: SQL_STRING _NEWLINE
 SQL_STRING: /(create|drop|insert|update|delete|select).+?;/is  // match upto semicolon
@@ -23,9 +19,6 @@ SQL_STRING: /(create|drop|insert|update|delete|select).+?;/is  // match upto sem
 MODULE_NAME: ("."|"..")? CNAME ("." CNAME)*
 
 %import common.CNAME
-%import common.INT
-%import common.FLOAT
-%import python.STRING -> QUOTED_STRING
 %import common.NEWLINE -> _NEWLINE
 %import common.WS_INLINE
 
