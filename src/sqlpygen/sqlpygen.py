@@ -42,6 +42,10 @@ class SqlPyGenTransformer(Transformer):
         name, sql = ts
         return ("schemas", {"name": name, "sql": sql})
 
+    def vname_value(self, ts):
+        vname, value = ts
+        return {"name": vname, "value": value}
+
     def testargs(self, ts):
         return ("testargs", ts)
 
@@ -57,6 +61,7 @@ class SqlPyGenTransformer(Transformer):
                 testargs = val
             else:
                 raise ValueError(f"Unexpected child type: {typ=} {val=}")
+
         return (
             "queries",
             {"name": name, "params": params, "return_": return_, "sql": sql, "testargs": testargs},

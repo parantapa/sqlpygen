@@ -78,7 +78,11 @@ def create_schema(connection: ConnectionType) -> None:
 def {{ query.name }}(connection: ConnectionType, {{ expand_params(query.params) }}) -> {{ expand_return(query.return_) }}:
     """Query {{query.name}} with transaction."""
     {% if query.params %}
-    query_args = [{% for param in query.params %}{{ param.name }}{{ comma_sep(loop) }}{% endfor %}]
+    query_args = {
+        {% for param in query.params %}
+        "{{ param.name }}": {{ param.name }}{{ comma_sep(loop) }}
+        {% endfor %}
+    }
     {% endif %}
 
     with connection:
@@ -101,7 +105,11 @@ def {{ query.name }}(connection: ConnectionType, {{ expand_params(query.params) 
 def {{ query.name }}_nt(connection: ConnectionType, {{ expand_params(query.params) }}) -> {{ expand_return_nt(query.return_) }}:
     """Query {{query.name}} no implied transaction."""
     {% if query.params %}
-    query_args = [{% for param in query.params %}{{ param.name }}{{ comma_sep(loop) }}{% endfor %}]
+    query_args = {
+        {% for param in query.params %}
+        "{{ param.name }}": {{ param.name }}{{ comma_sep(loop) }}
+        {% endfor %}
+    }
     {% endif %}
 
     cursor = connection.cursor()
@@ -134,11 +142,21 @@ def explain_queries() -> None:
             sql = QUERY["{{ query.name }}"]
             sql = "EXPLAIN " + sql
 
-            query_args = [{% for arg in query.testargs %}{{ arg }}{{ comma_sep(loop) }}{% endfor %}]
+            {% if query.params %}
+            query_args = {
+                {% for arg in query.testargs %}
+                "{{ arg.name }}": {{ arg.value }}{{ comma_sep(loop) }}
+                {% endfor %}
+            }
+            {% endif %}
 
+            {% if query.params %}
             cursor.execute(sql, query_args)
+            {% else %}
+            cursor.execute(sql)
+            {% endif %}
 
-            print("Query explnation for {{ query.name }}")
+            print("Query explanation for {{ query.name }}")
             print("-" * 80)
             pprint(cursor.fetchall())
         except Exception as e:

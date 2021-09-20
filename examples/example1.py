@@ -29,7 +29,13 @@ QUERY = {}
 QUERY[
     "insert_into_stocks"
 ] = """
-INSERT INTO stocks VALUES (?,?,?,?,?)
+INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price)
+"""
+
+QUERY[
+    "select_from_stocks"
+] = """
+SELECT * FROM stocks
 """
 
 
@@ -57,7 +63,13 @@ def insert_into_stocks(
     price: float,
 ) -> None:
     """Query insert_into_stocks with transaction."""
-    query_args = [date, trans, symbol, qty, price]
+    query_args = {
+        "date": date,
+        "trans": trans,
+        "symbol": symbol,
+        "qty": qty,
+        "price": price,
+    }
 
     with connection:
         cursor = connection.cursor()
@@ -81,7 +93,13 @@ def insert_into_stocks_nt(
     price: float,
 ) -> None:
     """Query insert_into_stocks no implied transaction."""
-    query_args = [date, trans, symbol, qty, price]
+    query_args = {
+        "date": date,
+        "trans": trans,
+        "symbol": symbol,
+        "qty": qty,
+        "price": price,
+    }
 
     cursor = connection.cursor()
     try:
@@ -92,6 +110,43 @@ def insert_into_stocks_nt(
     except Exception as e:
         raise RuntimeError(
             "An unexpected exception occurred while executing query: insert_into_stocks"
+        ) from e
+
+
+def select_from_stocks(
+    connection: ConnectionType,
+) -> list[tuple[str, str, str, float, float]]:
+    """Query select_from_stocks with transaction."""
+
+    with connection:
+        cursor = connection.cursor()
+        try:
+            sql = QUERY["select_from_stocks"]
+
+            cursor.execute(sql)
+
+            return cursor.fetchall()
+        except Exception as e:
+            raise RuntimeError(
+                "An unexpected exception occurred while executing query: select_from_stocks"
+            ) from e
+
+
+def select_from_stocks_nt(
+    connection: ConnectionType,
+) -> Sequence[tuple[str, str, str, float, float]]:
+    """Query select_from_stocks no implied transaction."""
+
+    cursor = connection.cursor()
+    try:
+        sql = QUERY["select_from_stocks"]
+
+        cursor.execute(sql)
+
+        return cast(Sequence[tuple[str, str, str, float, float]], cursor)
+    except Exception as e:
+        raise RuntimeError(
+            "An unexpected exception occurred while executing query: select_from_stocks"
         ) from e
 
 
@@ -106,16 +161,36 @@ def explain_queries() -> None:
             sql = QUERY["insert_into_stocks"]
             sql = "EXPLAIN " + sql
 
-            query_args = ["2006-01-05", "BUY", "RHAT", 100, 35.14]
+            query_args = {
+                "date": "2006-01-05",
+                "trans": "BUY",
+                "symbol": "RHAT",
+                "qty": 100,
+                "price": 35.14,
+            }
 
             cursor.execute(sql, query_args)
 
-            print("Query explnation for insert_into_stocks")
+            print("Query explanation for insert_into_stocks")
             print("-" * 80)
             pprint(cursor.fetchall())
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query plan for: insert_into_stocks"
+            ) from e
+
+        try:
+            sql = QUERY["select_from_stocks"]
+            sql = "EXPLAIN " + sql
+
+            cursor.execute(sql)
+
+            print("Query explanation for select_from_stocks")
+            print("-" * 80)
+            pprint(cursor.fetchall())
+        except Exception as e:
+            raise RuntimeError(
+                "An unexpected exception occurred while executing query plan for: select_from_stocks"
             ) from e
 
 

@@ -13,7 +13,8 @@ pname_ptype: CNAME ":" CNAME
 
 return_: "--" "return" ":" CNAME ("," CNAME)* _NEWLINE
 
-testargs: "--" "testargs" ":" "(" value ("," value)* ")" _NEWLINE
+testargs: "--" "testargs" ":" vname_value ("," vname_value)* _NEWLINE
+vname_value: CNAME "=" value
 ?value: INT|FLOAT|QUOTED_STRING
 
 ?sql: SQL_STRING _NEWLINE
