@@ -4,7 +4,7 @@ This module has been generated with SqlPyGen.
 """
 
 from pprint import pprint
-from typing import NewType, Sequence, cast
+from typing import NewType, Iterable, cast
 
 import sqlite3
 ConnectionType = sqlite3.Connection
@@ -37,7 +37,7 @@ list[tuple[{% for etype in return_ %}{{ etype }}{{ comma_sep(loop) }}{% endfor %
 {%- endmacro %}
 
 {% macro do_expand_return_nt(return_) -%}
-Sequence[tuple[{% for etype in return_ %}{{ etype }}{{ comma_sep(loop) }}{% endfor %}]]
+Iterable[tuple[{% for etype in return_ %}{{ etype }}{{ comma_sep(loop) }}{% endfor %}]]
 {%- endmacro %}
 
 {% macro expand_return_nt(return_) -%}

@@ -4,7 +4,7 @@ This module has been generated with SqlPyGen.
 """
 
 from pprint import pprint
-from typing import NewType, Sequence, cast
+from typing import NewType, Iterable, cast
 
 import sqlite3
 
@@ -134,7 +134,7 @@ def select_from_stocks(
 
 def select_from_stocks_nt(
     connection: ConnectionType,
-) -> Sequence[tuple[str, str, str, float, float]]:
+) -> Iterable[tuple[str, str, str, float, float]]:
     """Query select_from_stocks no implied transaction."""
 
     cursor = connection.cursor()
@@ -143,7 +143,7 @@ def select_from_stocks_nt(
 
         cursor.execute(sql)
 
-        return cast(Sequence[tuple[str, str, str, float, float]], cursor)
+        return cast(Iterable[tuple[str, str, str, float, float]], cursor)
     except Exception as e:
         raise RuntimeError(
             "An unexpected exception occurred while executing query: select_from_stocks"
