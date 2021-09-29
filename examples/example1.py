@@ -4,7 +4,7 @@ This module has been generated with SqlPyGen.
 """
 
 from pprint import pprint
-from typing import NewType, Iterable, cast
+from typing import Iterable, cast
 
 import sqlite3
 

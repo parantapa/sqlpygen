@@ -4,7 +4,7 @@ This module has been generated with SqlPyGen.
 """
 
 from pprint import pprint
-from typing import NewType, Iterable, cast
+from typing import Iterable, cast
 
 import sqlite3
 ConnectionType = sqlite3.Connection
@@ -16,10 +16,6 @@ ConnectionType = sqlite3.Connection
 {% for stmt in import_stmts %}
 from {{ stmt.module }} import {% for name in stmt.names %}{{ name }}{{ comma_sep(loop) }}{% endfor %}
 
-{% endfor %}
-
-{% for type in types %}
-{{ type.name }} = NewType("{{ type.name }}", {{ type.old_type }})
 {% endfor %}
 
 {% macro expand_params(params) -%}

@@ -1,10 +1,9 @@
 // SqlPyGen grammar
 
-start: module (import_stmt | type | schema | query)*
+start: module (import_stmt | schema | query)*
 
 module: "--"  "module" ":" CNAME _NEWLINE
 import_stmt: "--" "from" MODULE_NAME "import" CNAME ("," CNAME)* _NEWLINE
-type: "--" "type" ":" CNAME "=" CNAME _NEWLINE
 schema: "--" "schema" ":" CNAME _NEWLINE sql
 query: "--" "query" ":" CNAME _NEWLINE params? return_? sql
 

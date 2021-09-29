@@ -17,10 +17,6 @@ class SqlPyGenTransformer(Transformer):
     def SQL_STRING(self, t):
         return t.strip().rstrip(";").strip()
 
-    def type(self, ts):
-        name, old_type = ts
-        return ("types", {"name": name, "old_type": old_type})
-
     def module(self, ts):
         (name,) = ts
         return ("module", name)
@@ -63,7 +59,6 @@ class SqlPyGenTransformer(Transformer):
         ret = {
             "module": None,
             "import_stmts": [],
-            "types": [],
             "schemas": [],
             "queries": [],
         }
