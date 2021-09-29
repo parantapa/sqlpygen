@@ -13,6 +13,7 @@ class SqlPyGenTransformer(Transformer):
 
     CNAME = str
     MODULE_NAME = str
+    RTYPE_OPT = str
 
     def SQL_STRING(self, t):
         return t.strip().rstrip(";").strip()
@@ -27,6 +28,21 @@ class SqlPyGenTransformer(Transformer):
 
     def params(self, ts):
         return ("params", ts)
+
+    def rtype(self, ts):
+        print(ts)
+        if len(ts) == 1:
+            rtype, optional = ts[0], True
+        elif len(ts) == 2:
+            rtype, optional = ts
+            optional = not (optional == "!")
+        else:
+            raise ValueError(f"Unexpected child type: {ts=}")
+
+        if optional:
+            rtype = f"Optional[{rtype}]"
+
+        return rtype
 
     def return_(self, ts):
         return ("return_", ts)

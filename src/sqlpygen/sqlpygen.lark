@@ -10,7 +10,9 @@ query: "--" "query" ":" CNAME _NEWLINE params? return_? sql
 params: "--" "params" ":" pname_ptype ("," pname_ptype)* _NEWLINE
 pname_ptype: CNAME ":" CNAME
 
-return_: "--" "return" ":" CNAME ("," CNAME)* _NEWLINE
+return_: "--" "return" ":" rtype ("," rtype)* _NEWLINE
+rtype: CNAME RTYPE_OPT?
+RTYPE_OPT: "!"
 
 ?sql: SQL_STRING _NEWLINE
 SQL_STRING: /(create|drop|insert|update|delete|select).+?;/is  // match upto semicolon

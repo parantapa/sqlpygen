@@ -19,3 +19,8 @@ INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price) ;
 -- return: str, str, str, float, float
 
 SELECT * FROM stocks ;
+
+-- query: count_stocks
+-- return: int!
+
+SELECT COUNT(*) FROM stocks ;

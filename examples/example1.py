@@ -4,7 +4,7 @@ This module has been generated with SqlPyGen.
 """
 
 from pprint import pprint
-from typing import Iterable, cast
+from typing import Optional, Iterable, cast
 
 import sqlite3
 
@@ -36,6 +36,12 @@ QUERY[
     "select_from_stocks"
 ] = """
 SELECT * FROM stocks
+"""
+
+QUERY[
+    "count_stocks"
+] = """
+SELECT COUNT(*) FROM stocks
 """
 
 
@@ -115,7 +121,9 @@ def insert_into_stocks_nt(
 
 def select_from_stocks(
     connection: ConnectionType,
-) -> list[tuple[str, str, str, float, float]]:
+) -> list[
+    tuple[Optional[str], Optional[str], Optional[str], Optional[float], Optional[float]]
+]:
     """Query select_from_stocks with transaction."""
 
     with connection:
@@ -134,7 +142,9 @@ def select_from_stocks(
 
 def select_from_stocks_nt(
     connection: ConnectionType,
-) -> Iterable[tuple[str, str, str, float, float]]:
+) -> Iterable[
+    tuple[Optional[str], Optional[str], Optional[str], Optional[float], Optional[float]]
+]:
     """Query select_from_stocks no implied transaction."""
 
     cursor = connection.cursor()
@@ -143,10 +153,58 @@ def select_from_stocks_nt(
 
         cursor.execute(sql)
 
-        return cast(Iterable[tuple[str, str, str, float, float]], cursor)
+        return cast(
+            Iterable[
+                tuple[
+                    Optional[str],
+                    Optional[str],
+                    Optional[str],
+                    Optional[float],
+                    Optional[float],
+                ]
+            ],
+            cursor,
+        )
     except Exception as e:
         raise RuntimeError(
             "An unexpected exception occurred while executing query: select_from_stocks"
+        ) from e
+
+
+def count_stocks(
+    connection: ConnectionType,
+) -> list[tuple[int]]:
+    """Query count_stocks with transaction."""
+
+    with connection:
+        cursor = connection.cursor()
+        try:
+            sql = QUERY["count_stocks"]
+
+            cursor.execute(sql)
+
+            return cursor.fetchall()
+        except Exception as e:
+            raise RuntimeError(
+                "An unexpected exception occurred while executing query: count_stocks"
+            ) from e
+
+
+def count_stocks_nt(
+    connection: ConnectionType,
+) -> Iterable[tuple[int]]:
+    """Query count_stocks no implied transaction."""
+
+    cursor = connection.cursor()
+    try:
+        sql = QUERY["count_stocks"]
+
+        cursor.execute(sql)
+
+        return cast(Iterable[tuple[int]], cursor)
+    except Exception as e:
+        raise RuntimeError(
+            "An unexpected exception occurred while executing query: count_stocks"
         ) from e
 
 
@@ -191,6 +249,20 @@ def explain_queries() -> None:
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query plan for: select_from_stocks"
+            ) from e
+
+        try:
+            sql = QUERY["count_stocks"]
+            sql = "EXPLAIN " + sql
+
+            cursor.execute(sql)
+
+            print("Query explanation for count_stocks")
+            print("-" * 80)
+            pprint(cursor.fetchall())
+        except Exception as e:
+            raise RuntimeError(
+                "An unexpected exception occurred while executing query plan for: count_stocks"
             ) from e
 
 
