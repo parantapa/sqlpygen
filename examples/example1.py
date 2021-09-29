@@ -134,6 +134,7 @@ def select_from_stocks(
             cursor.execute(sql)
 
             return cursor.fetchall()
+
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query: select_from_stocks"
@@ -171,9 +172,7 @@ def select_from_stocks_nt(
         ) from e
 
 
-def count_stocks(
-    connection: ConnectionType,
-) -> list[tuple[int]]:
+def count_stocks(connection: ConnectionType) -> Optional[tuple[int]]:
     """Query count_stocks with transaction."""
 
     with connection:
@@ -183,16 +182,15 @@ def count_stocks(
 
             cursor.execute(sql)
 
-            return cursor.fetchall()
+            return cursor.fetchone()
+
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query: count_stocks"
             ) from e
 
 
-def count_stocks_nt(
-    connection: ConnectionType,
-) -> Iterable[tuple[int]]:
+def count_stocks_nt(connection: ConnectionType) -> Optional[tuple[int]]:
     """Query count_stocks no implied transaction."""
 
     cursor = connection.cursor()
@@ -201,7 +199,7 @@ def count_stocks_nt(
 
         cursor.execute(sql)
 
-        return cast(Iterable[tuple[int]], cursor)
+        return cursor.fetchone()
     except Exception as e:
         raise RuntimeError(
             "An unexpected exception occurred while executing query: count_stocks"

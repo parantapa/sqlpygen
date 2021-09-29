@@ -14,6 +14,7 @@ class SqlPyGenTransformer(Transformer):
     CNAME = str
     MODULE_NAME = str
     RTYPE_OPT = str
+    RETURN_OPT = str
 
     def SQL_STRING(self, t):
         return t.strip().rstrip(";").strip()
@@ -24,28 +25,68 @@ class SqlPyGenTransformer(Transformer):
 
     def pname_ptype(self, ts):
         pname, ptype = ts
-        return {"name": pname, "type": ptype}
+        return (pname, ptype)
 
     def params(self, ts):
-        return ("params", ts)
+        fn_params = [f"{pname}: {ptype}" for pname, ptype in ts]
+        fn_params = ", ".join(fn_params)
+        fn_params = "connection: ConnectionType, " + fn_params
 
-    def rtype(self, ts):
-        print(ts)
-        if len(ts) == 1:
-            rtype, optional = ts[0], True
-        elif len(ts) == 2:
-            rtype, optional = ts
-            optional = not (optional == "!")
-        else:
-            raise ValueError(f"Unexpected child type: {ts=}")
+        query_args = [f'"{pname}": {pname}' for pname, _ in ts]
+        query_args = ", ".join(query_args)
+        query_args = f"{{ {query_args} }}"
 
-        if optional:
-            rtype = f"Optional[{rtype}]"
+        explain_args = [f'"{pname}": None' for pname, _ in ts]
+        explain_args = ", ".join(explain_args)
+        explain_args = f"{{ {explain_args} }}"
 
+        return (
+            "params",
+            {
+                "fn_params": fn_params,
+                "query_args": query_args,
+                "explain_args": explain_args,
+                "has_params": True,
+            },
+        )
+
+    def rtype_opt(self, ts):
+        rtype = ts[0]
+        return f"Optional[{rtype}]"
+
+    def rtype_not_opt(self, ts):
+        rtype = ts[0]
         return rtype
 
-    def return_(self, ts):
-        return ("return_", ts)
+    def returnone(self, ts):
+        ts = ", ".join(ts)
+        wt_return = f"Optional[tuple[{ts}]]"
+        nt_return = f"Optional[tuple[{ts}]]"
+
+        return (
+            "return_",
+            {
+                "wt_return": wt_return,
+                "nt_return": nt_return,
+                "returns_one": True,
+                "does_return": True,
+            },
+        )
+
+    def returnmany(self, ts):
+        ts = ", ".join(ts)
+        wt_return = f"list[tuple[{ts}]]"
+        nt_return = f"Iterable[tuple[{ts}]]"
+
+        return (
+            "return_",
+            {
+                "wt_return": wt_return,
+                "nt_return": nt_return,
+                "returns_one": False,
+                "does_return": True,
+            },
+        )
 
     def schema(self, ts):
         name, sql = ts
@@ -53,7 +94,18 @@ class SqlPyGenTransformer(Transformer):
 
     def query(self, ts):
         name, sql = ts[0], ts[-1]
-        params, return_ = [], []
+        params = {
+            "fn_params": "connection: ConnectionType",
+            "query_args": None,
+            "explain_args": None,
+            "has_params": False,
+        }
+        return_ = {
+            "wt_return": "None",
+            "nt_return": "None",
+            "returns_one": None,
+            "does_return": False,
+        }
         for typ, val in ts[1:-1]:
             if typ == "params":
                 params = val

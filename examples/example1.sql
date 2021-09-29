@@ -16,11 +16,11 @@ CREATE TABLE stocks (
 INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price) ;
 
 -- query: select_from_stocks
--- return: str, str, str, float, float
+-- return*: str, str, str, float, float
 
 SELECT * FROM stocks ;
 
 -- query: count_stocks
--- return: int!
+-- return?: int!
 
 SELECT COUNT(*) FROM stocks ;

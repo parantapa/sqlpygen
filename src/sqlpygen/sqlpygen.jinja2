@@ -9,36 +9,10 @@ from typing import Optional, Iterable, cast
 import sqlite3
 ConnectionType = sqlite3.Connection
 
-{% macro comma_sep(loop) -%}
-{% if not loop.last %}, {% endif %}
-{%- endmacro %}
-
 {% for stmt in import_stmts %}
 from {{ stmt.module }} import {% for name in stmt.names %}{{ name }}{{ comma_sep(loop) }}{% endfor %}
 
 {% endfor %}
-
-{% macro expand_params(params) -%}
-{% for param in params -%}
-{{ param.name }}: {{ param.type }}{{ comma_sep(loop) }}
-{%- endfor %}
-{%- endmacro %}
-
-{% macro do_expand_return(return_) -%}
-list[tuple[{% for etype in return_ %}{{ etype }}{{ comma_sep(loop) }}{% endfor %}]]
-{%- endmacro %}
-
-{% macro expand_return(return_) -%}
-{% if return_ %}{{ do_expand_return(return_) }}{% else %}None{% endif %}
-{%- endmacro %}
-
-{% macro do_expand_return_nt(return_) -%}
-Iterable[tuple[{% for etype in return_ %}{{ etype }}{{ comma_sep(loop) }}{% endfor %}]]
-{%- endmacro %}
-
-{% macro expand_return_nt(return_) -%}
-{% if return_ %}{{ do_expand_return_nt(return_) }}{% else %}None{% endif %}
-{%- endmacro %}
 
 SCHEMA = {}
 {% for schema in schemas %}
@@ -71,14 +45,10 @@ def create_schema(connection: ConnectionType) -> None:
         {% endfor %}
 
 {% for query in queries %}
-def {{ query.name }}(connection: ConnectionType, {{ expand_params(query.params) }}) -> {{ expand_return(query.return_) }}:
+def {{ query.name }}({{ query.params.fn_params }}) -> {{ query.return_.wt_return }}:
     """Query {{query.name}} with transaction."""
-    {% if query.params %}
-    query_args = {
-        {% for param in query.params %}
-        "{{ param.name }}": {{ param.name }}{{ comma_sep(loop) }}
-        {% endfor %}
-    }
+    {% if query.params.has_params %}
+    query_args = {{ query.params.query_args }}
     {% endif %}
 
     with connection:
@@ -86,40 +56,45 @@ def {{ query.name }}(connection: ConnectionType, {{ expand_params(query.params) 
         try:
             sql = QUERY["{{ query.name }}"]
 
-            {% if query.params %}
+            {% if query.params.has_params %}
             cursor.execute(sql, query_args)
             {% else %}
             cursor.execute(sql)
             {% endif %}
 
-            {% if query.return_ %}
+            {% if query.return_.does_return %}
+            {% if query.return_.returns_one %}
+            return cursor.fetchone()
+            {% else %}
             return cursor.fetchall()
             {% endif %}
+            {% endif %}
+
         except Exception as e:
             raise RuntimeError("An unexpected exception occurred while executing query: {{ query.name }}") from e
 
-def {{ query.name }}_nt(connection: ConnectionType, {{ expand_params(query.params) }}) -> {{ expand_return_nt(query.return_) }}:
+def {{ query.name }}_nt({{ query.params.fn_params }}) -> {{ query.return_.nt_return }}:
     """Query {{query.name}} no implied transaction."""
-    {% if query.params %}
-    query_args = {
-        {% for param in query.params %}
-        "{{ param.name }}": {{ param.name }}{{ comma_sep(loop) }}
-        {% endfor %}
-    }
+    {% if query.params.has_params %}
+    query_args = {{ query.params.query_args }}
     {% endif %}
 
     cursor = connection.cursor()
     try:
         sql = QUERY["{{ query.name }}"]
 
-        {% if query.params %}
+        {% if query.params.has_params %}
         cursor.execute(sql, query_args)
         {% else %}
         cursor.execute(sql)
         {% endif %}
 
-        {% if query.return_ %}
-        return cast({{ expand_return_nt(query.return_) }}, cursor)
+        {% if query.return_.does_return %}
+        {% if query.return_.returns_one %}
+        return cursor.fetchone()
+        {% else %}
+        return cast({{ query.return_.nt_return }}, cursor)
+        {% endif %}
         {% endif %}
     except Exception as e:
         raise RuntimeError("An unexpected exception occurred while executing query: {{ query.name }}") from e
@@ -138,15 +113,11 @@ def explain_queries() -> None:
             sql = QUERY["{{ query.name }}"]
             sql = "EXPLAIN " + sql
 
-            {% if query.params %}
-            query_args = {
-                {% for param in query.params %}
-                "{{ param.name }}": None{{ comma_sep(loop) }}
-                {% endfor %}
-            }
+            {% if query.params.has_params %}
+            query_args = {{ query.params.explain_args }}
             {% endif %}
 
-            {% if query.params %}
+            {% if query.params.has_params %}
             cursor.execute(sql, query_args)
             {% else %}
             cursor.execute(sql)
