@@ -1,3 +1,4 @@
+# This is an exmaple of sqlpygen file
 -- module: example1
 
 -- schema: table_stocks

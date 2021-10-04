@@ -25,8 +25,11 @@ MODULE_NAME: ("."|"..")? CNAME ("." CNAME)*
 %import common.CNAME
 %import common.NEWLINE -> _NEWLINE
 %import common.WS_INLINE
+%import common.SH_COMMENT
 
 EMPTY_LINE: WS_INLINE _NEWLINE
+SH_COMMENT_LINE: SH_COMMENT _NEWLINE
 
-%ignore EMPTY_LINE
 %ignore WS_INLINE
+%ignore EMPTY_LINE
+%ignore SH_COMMENT_LINE
