@@ -24,6 +24,12 @@ dependencies = [
     "black",
 ]
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.urls]
 "Homepage" = "http://github.com/parantapa/sqlpygen"
 
