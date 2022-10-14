@@ -10,7 +10,6 @@ import sqlite3
 
 ConnectionType = sqlite3.Connection
 
-
 SCHEMA = {}
 SCHEMA[
     "table_stocks"
@@ -68,37 +67,7 @@ def insert_into_stocks(
     qty: float,
     price: float,
 ) -> None:
-    """Query insert_into_stocks with transaction."""
-    query_args = {
-        "date": date,
-        "trans": trans,
-        "symbol": symbol,
-        "qty": qty,
-        "price": price,
-    }
-
-    with connection:
-        cursor = connection.cursor()
-        try:
-            sql = QUERY["insert_into_stocks"]
-
-            cursor.execute(sql, query_args)
-
-        except Exception as e:
-            raise RuntimeError(
-                "An unexpected exception occurred while executing query: insert_into_stocks"
-            ) from e
-
-
-def insert_into_stocks_nt(
-    connection: ConnectionType,
-    date: str,
-    trans: str,
-    symbol: str,
-    qty: float,
-    price: float,
-) -> None:
-    """Query insert_into_stocks no implied transaction."""
+    """Query insert_into_stocks."""
     query_args = {
         "date": date,
         "trans": trans,
@@ -121,32 +90,10 @@ def insert_into_stocks_nt(
 
 def select_from_stocks(
     connection: ConnectionType,
-) -> list[
-    tuple[Optional[str], Optional[str], Optional[str], Optional[float], Optional[float]]
-]:
-    """Query select_from_stocks with transaction."""
-
-    with connection:
-        cursor = connection.cursor()
-        try:
-            sql = QUERY["select_from_stocks"]
-
-            cursor.execute(sql)
-
-            return cursor.fetchall()
-
-        except Exception as e:
-            raise RuntimeError(
-                "An unexpected exception occurred while executing query: select_from_stocks"
-            ) from e
-
-
-def select_from_stocks_nt(
-    connection: ConnectionType,
 ) -> Iterable[
     tuple[Optional[str], Optional[str], Optional[str], Optional[float], Optional[float]]
 ]:
-    """Query select_from_stocks no implied transaction."""
+    """Query select_from_stocks."""
 
     cursor = connection.cursor()
     try:
@@ -173,25 +120,7 @@ def select_from_stocks_nt(
 
 
 def count_stocks(connection: ConnectionType) -> Optional[tuple[int]]:
-    """Query count_stocks with transaction."""
-
-    with connection:
-        cursor = connection.cursor()
-        try:
-            sql = QUERY["count_stocks"]
-
-            cursor.execute(sql)
-
-            return cursor.fetchone()
-
-        except Exception as e:
-            raise RuntimeError(
-                "An unexpected exception occurred while executing query: count_stocks"
-            ) from e
-
-
-def count_stocks_nt(connection: ConnectionType) -> Optional[tuple[int]]:
-    """Query count_stocks no implied transaction."""
+    """Query count_stocks."""
 
     cursor = connection.cursor()
     try:

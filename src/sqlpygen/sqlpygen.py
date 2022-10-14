@@ -4,7 +4,7 @@ from pprint import pprint
 from importlib.resources import read_text
 
 import black
-from lark import Lark, Transformer, UnexpectedToken
+from lark import Lark, Transformer, UnexpectedToken # type: ignore
 from jinja2 import Template, StrictUndefined, TemplateSyntaxError
 
 
@@ -60,14 +60,12 @@ class SqlPyGenTransformer(Transformer):
 
     def returnone(self, ts):
         ts = ", ".join(ts)
-        wt_return = f"Optional[tuple[{ts}]]"
-        nt_return = f"Optional[tuple[{ts}]]"
+        return_ = f"Optional[tuple[{ts}]]"
 
         return (
             "return_",
             {
-                "wt_return": wt_return,
-                "nt_return": nt_return,
+                "return_": return_,
                 "returns_one": True,
                 "does_return": True,
             },
@@ -75,14 +73,12 @@ class SqlPyGenTransformer(Transformer):
 
     def returnmany(self, ts):
         ts = ", ".join(ts)
-        wt_return = f"list[tuple[{ts}]]"
-        nt_return = f"Iterable[tuple[{ts}]]"
+        return_ = f"Iterable[tuple[{ts}]]"
 
         return (
             "return_",
             {
-                "wt_return": wt_return,
-                "nt_return": nt_return,
+                "return_": return_,
                 "returns_one": False,
                 "does_return": True,
             },
@@ -101,8 +97,7 @@ class SqlPyGenTransformer(Transformer):
             "has_params": False,
         }
         return_ = {
-            "wt_return": "None",
-            "nt_return": "None",
+            "return_": "None",
             "returns_one": None,
             "does_return": False,
         }
@@ -119,14 +114,9 @@ class SqlPyGenTransformer(Transformer):
             {"name": name, "params": params, "return_": return_, "sql": sql},
         )
 
-    def import_stmt(self, ts):
-        module, *names = ts
-        return ("import_stmts", {"module": module, "names": names})
-
     def start(self, ts):
         ret = {
             "module": None,
-            "import_stmts": [],
             "schemas": [],
             "queries": [],
         }
