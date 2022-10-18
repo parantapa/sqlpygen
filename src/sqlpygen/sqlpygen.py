@@ -1,10 +1,10 @@
 """Generate type annotated python from SQL."""
 
-from pprint import pprint
 from importlib.resources import read_text
 from dataclasses import dataclass
 from typing import Optional
 
+from rich.console import Console
 from black import format_str, Mode  # type: ignore
 from lark import Lark, Transformer, UnexpectedToken  # type: ignore
 from jinja2 import Template, StrictUndefined, TemplateSyntaxError
@@ -159,11 +159,14 @@ def get_template() -> Template:
     return tpl_obj
 
 
-def generate(text: str, verbose: bool = False) -> str:
+def generate(text: str, dbcon: str, verbose: bool) -> str:
     """Generate python from annotated sql."""
     parser = get_parser()
     transformer = SqlPyGenTransformer()
     template = get_template()
+
+    if verbose:
+        console = Console()
 
     try:
         parse_tree = parser.parse(text)
@@ -176,19 +179,20 @@ def generate(text: str, verbose: bool = False) -> str:
         raise RuntimeError(msg)
 
     if verbose:
-        print("Parse tree")
-        print("-" * 80)
-        print(parse_tree.pretty())
+        console.rule("Parse Tree")
+        console.print(parse_tree)
 
     trans_tree = transformer.transform(parse_tree)
 
     if verbose:
-        print("Transformed tree")
-        print("-" * 80)
-        pprint(trans_tree)
+        console.rule("Transformed tree")
+        console.print(trans_tree)
 
     rendered_tree = template.render(
-        module=trans_tree.module, schemas=trans_tree.schemas, queries=trans_tree.queries
+        dbcon=dbcon,
+        module=trans_tree.module,
+        schemas=trans_tree.schemas,
+        queries=trans_tree.queries,
     )
     rendered_tree = format_str(rendered_tree, mode=Mode())
     return rendered_tree

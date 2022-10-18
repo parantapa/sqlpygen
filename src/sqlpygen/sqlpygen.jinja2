@@ -6,8 +6,13 @@ This module has been generated with SqlPyGen.
 from pprint import pprint
 from typing import Optional, Iterable, cast
 
+{% if dbcon == "apsw" %}
+import apsw
+ConnectionType = apsw.Connection
+{% else %}
 import sqlite3
 ConnectionType = sqlite3.Connection
+{% endif %}
 
 SCHEMA = {}
 {% for schema in schemas %}
@@ -70,8 +75,17 @@ def {{ query.name }}({{ query.params.fn_params }}) -> {{ query.return_.return_ }
 {% endfor %}
 
 def explain_queries() -> None:
+    from rich.console import Console
+    from rich.table import Table
+
+    {% if dbcon == "apsw" %}
+    connection = apsw.Connection(":memory:")
+    {% else %}
     connection = sqlite3.connect(":memory:")
+    {% endif %}
     create_schema(connection)
+
+    console = Console()
 
     with connection:
         cursor = connection.cursor()
@@ -91,9 +105,10 @@ def explain_queries() -> None:
             cursor.execute(sql)
             {% endif %}
 
-            print("Query explanation for {{ query.name }}")
-            print("-" * 80)
-            pprint(cursor.fetchall())
+            table = Table(title="Query explanation for {{ query.name }}", show_header=False)
+            for row in cursor:
+                table.add_row(*[str(x) for x in row])
+            console.print(table)
         except Exception as e:
             raise RuntimeError("An unexpected exception occurred while executing query plan for: {{ query.name }}") from e
 

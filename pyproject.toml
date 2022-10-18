@@ -19,6 +19,7 @@ classifiers = [
 
 dependencies = [
     "click",
+    "rich",
     "lark",
     "jinja2",
     "black",

@@ -6,9 +6,9 @@ This module has been generated with SqlPyGen.
 from pprint import pprint
 from typing import Optional, Iterable, cast
 
-import sqlite3
+import apsw
 
-ConnectionType = sqlite3.Connection
+ConnectionType = apsw.Connection
 
 SCHEMA = {}
 SCHEMA[
@@ -136,8 +136,13 @@ def count_stocks(connection: ConnectionType) -> Optional[tuple[int]]:
 
 
 def explain_queries() -> None:
-    connection = sqlite3.connect(":memory:")
+    from rich.console import Console
+    from rich.table import Table
+
+    connection = apsw.Connection(":memory:")
     create_schema(connection)
+
+    console = Console()
 
     with connection:
         cursor = connection.cursor()
@@ -156,9 +161,12 @@ def explain_queries() -> None:
 
             cursor.execute(sql, query_args)
 
-            print("Query explanation for insert_into_stocks")
-            print("-" * 80)
-            pprint(cursor.fetchall())
+            table = Table(
+                title="Query explanation for insert_into_stocks", show_header=False
+            )
+            for row in cursor:
+                table.add_row(*[str(x) for x in row])
+            console.print(table)
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query plan for: insert_into_stocks"
@@ -170,9 +178,12 @@ def explain_queries() -> None:
 
             cursor.execute(sql)
 
-            print("Query explanation for select_from_stocks")
-            print("-" * 80)
-            pprint(cursor.fetchall())
+            table = Table(
+                title="Query explanation for select_from_stocks", show_header=False
+            )
+            for row in cursor:
+                table.add_row(*[str(x) for x in row])
+            console.print(table)
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query plan for: select_from_stocks"
@@ -184,9 +195,10 @@ def explain_queries() -> None:
 
             cursor.execute(sql)
 
-            print("Query explanation for count_stocks")
-            print("-" * 80)
-            pprint(cursor.fetchall())
+            table = Table(title="Query explanation for count_stocks", show_header=False)
+            for row in cursor:
+                table.add_row(*[str(x) for x in row])
+            console.print(table)
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query plan for: count_stocks"

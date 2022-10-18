@@ -13,7 +13,7 @@ from .sqlpygen import generate
     "-i",
     "--input",
     "input_file",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
     required=True,
     help="Annotated sql file.",
 )
@@ -21,25 +21,27 @@ from .sqlpygen import generate
     "-o",
     "--output",
     "output_file",
-    type=click.Path(exists=False, file_okay=True, dir_okay=False),
+    type=click.Path(exists=False, file_okay=True, dir_okay=False, path_type=Path),
     required=True,
     help="Generated python file.",
 )
 @click.option(
+    "-d", "--dbcon",
+    type=click.Choice(["sqlite3", "apsw"]),
+    required=True,
+    help="Database connection type.")
+@click.option(
     "-v", "--verbose",
     is_flag=True,
     help="Print out intermediate results.")
-def cli(input_file, output_file, verbose):
+def cli(input_file, output_file, dbcon, verbose):
     """SqlPyGen
 
     Generated type annotated python code from annotated SQL
     """
-    input_file = Path(input_file)
-    output_file = Path(output_file)
-
     input_ = input_file.read_text()
     try:
-        output = generate(input_, verbose)
+        output = generate(input_, dbcon, verbose)
     except RuntimeError as e:
         click.secho(str(e), fg="red")
         sys.exit(1)
