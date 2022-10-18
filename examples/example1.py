@@ -114,7 +114,9 @@ def select_from_stocks(
         cursor.execute(sql)
 
         for row in cursor:
+            row = list(row)
             row[5] = None if row[5] is None else StockInfo.parse_raw(row[5])
+            row = tuple(row)
             yield row
     except Exception as e:
         raise RuntimeError(

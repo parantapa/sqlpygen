@@ -71,15 +71,23 @@ def {{ query.name }}({{ query.params.fn_params }}) -> {{ query.return_.fn_return
         {% if query.return_.does_return %}
         {% if query.return_.returns_one %}
         row = cursor.fetchone()
+        {% if query.return_.conversions %}
+        row = list(row)
         {% for conversion_stmt in query.return_.conversions %}
         {{ conversion_stmt }}
         {% endfor %}
+        row = tuple(row)
+        {% endif %}
         return row
         {% else %}
         for row in cursor:
+            {% if query.return_.conversions %}
+            row = list(row)
             {% for conversion_stmt in query.return_.conversions %}
             {{ conversion_stmt }}
             {% endfor %}
+            row = tuple(row)
+            {% endif %}
             yield row
         {% endif %}
         {% endif %}
