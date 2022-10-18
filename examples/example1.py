@@ -3,7 +3,7 @@
 This module has been generated with SqlPyGen from example1.sql.
 """
 
-from typing import Optional, Iterable, cast
+from typing import Optional, Iterable
 from stock_info import StockInfo
 
 import apsw
