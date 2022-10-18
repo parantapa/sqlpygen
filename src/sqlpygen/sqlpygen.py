@@ -2,53 +2,91 @@
 
 from pprint import pprint
 from importlib.resources import read_text
+from dataclasses import dataclass
+from typing import Optional
 
-import black
-from lark import Lark, Transformer, UnexpectedToken # type: ignore
+from black import format_str, Mode  # type: ignore
+from lark import Lark, Transformer, UnexpectedToken  # type: ignore
 from jinja2 import Template, StrictUndefined, TemplateSyntaxError
+
+
+@dataclass
+class Module:
+    name: str
+
+
+@dataclass
+class Parameter:
+    name: str
+    type: str
+
+
+@dataclass
+class Parameters:
+    fn_params: str
+    query_args: Optional[str]
+    explain_args: Optional[str]
+    has_params: bool
+
+
+@dataclass
+class Return:
+    return_: str
+    returns_one: Optional[bool]
+    does_return: bool
+
+
+@dataclass
+class Schema:
+    name: str
+    sql: str
+
+
+@dataclass
+class Query:
+    name: str
+    params: Parameters
+    return_: Return
+    sql: str
+
+
+@dataclass
+class SqlFile:
+    module: Optional[Module]
+    schemas: list[Schema]
+    queries: list[Query]
 
 
 class SqlPyGenTransformer(Transformer):
     """Transform the parse tree for code generation."""
 
     CNAME = str
-    MODULE_NAME = str
-    RTYPE_OPT = str
-    RETURN_OPT = str
 
     def SQL_STRING(self, t):
         return t.strip().rstrip(";").strip()
 
     def module(self, ts):
         (name,) = ts
-        return ("module", name)
+        return Module(name)
 
     def pname_ptype(self, ts):
         pname, ptype = ts
-        return (pname, ptype)
+        return Parameter(pname, ptype)
 
     def params(self, ts):
-        fn_params = [f"{pname}: {ptype}" for pname, ptype in ts]
+        fn_params = [f"{p.name}: {p.type}" for p in ts]
         fn_params = ", ".join(fn_params)
         fn_params = "connection: ConnectionType, " + fn_params
 
-        query_args = [f'"{pname}": {pname}' for pname, _ in ts]
+        query_args = [f'"{p.name}": {p.name}' for p in ts]
         query_args = ", ".join(query_args)
         query_args = f"{{ {query_args} }}"
 
-        explain_args = [f'"{pname}": None' for pname, _ in ts]
+        explain_args = [f'"{p.name}": None' for p in ts]
         explain_args = ", ".join(explain_args)
         explain_args = f"{{ {explain_args} }}"
 
-        return (
-            "params",
-            {
-                "fn_params": fn_params,
-                "query_args": query_args,
-                "explain_args": explain_args,
-                "has_params": True,
-            },
-        )
+        return Parameters(fn_params, query_args, explain_args, True)
 
     def rtype_opt(self, ts):
         rtype = ts[0]
@@ -62,70 +100,43 @@ class SqlPyGenTransformer(Transformer):
         ts = ", ".join(ts)
         return_ = f"Optional[tuple[{ts}]]"
 
-        return (
-            "return_",
-            {
-                "return_": return_,
-                "returns_one": True,
-                "does_return": True,
-            },
-        )
+        return Return(return_, True, True)
 
     def returnmany(self, ts):
         ts = ", ".join(ts)
         return_ = f"Iterable[tuple[{ts}]]"
 
-        return (
-            "return_",
-            {
-                "return_": return_,
-                "returns_one": False,
-                "does_return": True,
-            },
-        )
+        return Return(return_, False, True)
 
     def schema(self, ts):
         name, sql = ts
-        return ("schemas", {"name": name, "sql": sql})
+        return Schema(name, sql)
 
     def query(self, ts):
         name, sql = ts[0], ts[-1]
-        params = {
-            "fn_params": "connection: ConnectionType",
-            "query_args": None,
-            "explain_args": None,
-            "has_params": False,
-        }
-        return_ = {
-            "return_": "None",
-            "returns_one": None,
-            "does_return": False,
-        }
-        for typ, val in ts[1:-1]:
-            if typ == "params":
-                params = val
-            elif typ == "return_":
-                return_ = val
+        params = Parameters("connection: ConnectionType", None, None, False)
+        return_ = Return("None", None, False)
+        for t in ts[1:-1]:
+            if isinstance(t, Parameters):
+                params = t
+            elif isinstance(t, Return):
+                return_ = t
             else:
-                raise ValueError(f"Unexpected child type: {typ=} {val=}")
+                raise ValueError(f"Unexpected child: {t=}")
 
-        return (
-            "queries",
-            {"name": name, "params": params, "return_": return_, "sql": sql},
-        )
+        return Query(name, params, return_, sql)
 
     def start(self, ts):
-        ret = {
-            "module": None,
-            "schemas": [],
-            "queries": [],
-        }
-        for grp, val in ts:
-            if grp == "module":
-                ret["module"] = val
+        ret = SqlFile(None, [], [])
+        for t in ts:
+            if isinstance(t, Module):
+                ret.module = t
+            elif isinstance(t, Query):
+                ret.queries.append(t)
+            elif isinstance(t, Schema):
+                ret.schemas.append(t)
             else:
-                ret[grp].append(val)
-
+                raise ValueError(f"Unexpected child: {t=}")
         return ret
 
 
@@ -176,6 +187,8 @@ def generate(text: str, verbose: bool = False) -> str:
         print("-" * 80)
         pprint(trans_tree)
 
-    rendered_tree = template.render(**trans_tree)
-    rendered_tree = black.format_str(rendered_tree, mode=black.Mode())
+    rendered_tree = template.render(
+        module=trans_tree.module, schemas=trans_tree.schemas, queries=trans_tree.queries
+    )
+    rendered_tree = format_str(rendered_tree, mode=Mode())
     return rendered_tree

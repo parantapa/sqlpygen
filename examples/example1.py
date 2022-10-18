@@ -1,4 +1,4 @@
-"""example1
+"""Module(name='example1')
 
 This module has been generated with SqlPyGen.
 """
