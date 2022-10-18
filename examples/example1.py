@@ -1,10 +1,10 @@
-"""Module(name='example1')
+"""example1
 
-This module has been generated with SqlPyGen.
+This module has been generated with SqlPyGen from example1.sql.
 """
 
-from pprint import pprint
 from typing import Optional, Iterable, cast
+from stock_info import StockInfo
 
 import apsw
 
@@ -19,7 +19,8 @@ CREATE TABLE stocks (
     trans text,
     symbol text,
     qty real,
-    price real
+    price real,
+    stock_info text
 )
 """
 
@@ -28,7 +29,7 @@ QUERY = {}
 QUERY[
     "insert_into_stocks"
 ] = """
-INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price)
+INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price, :stock_info)
 """
 
 QUERY[
@@ -66,14 +67,18 @@ def insert_into_stocks(
     symbol: str,
     qty: float,
     price: float,
+    stock_info: StockInfo,
 ) -> None:
     """Query insert_into_stocks."""
+    stock_info_json = stock_info.json()
+
     query_args = {
         "date": date,
         "trans": trans,
         "symbol": symbol,
         "qty": qty,
         "price": price,
+        "stock_info": stock_info_json,
     }
 
     cursor = connection.cursor()
@@ -91,7 +96,14 @@ def insert_into_stocks(
 def select_from_stocks(
     connection: ConnectionType,
 ) -> Iterable[
-    tuple[Optional[str], Optional[str], Optional[str], Optional[float], Optional[float]]
+    tuple[
+        Optional[str],
+        Optional[str],
+        Optional[str],
+        Optional[float],
+        Optional[float],
+        Optional[StockInfo],
+    ]
 ]:
     """Query select_from_stocks."""
 
@@ -101,18 +113,9 @@ def select_from_stocks(
 
         cursor.execute(sql)
 
-        return cast(
-            Iterable[
-                tuple[
-                    Optional[str],
-                    Optional[str],
-                    Optional[str],
-                    Optional[float],
-                    Optional[float],
-                ]
-            ],
-            cursor,
-        )
+        for row in cursor:
+            row[5] = None if row[5] is None else StockInfo.parse_raw(row[5])
+            yield row
     except Exception as e:
         raise RuntimeError(
             "An unexpected exception occurred while executing query: select_from_stocks"
@@ -128,7 +131,8 @@ def count_stocks(connection: ConnectionType) -> Optional[tuple[int]]:
 
         cursor.execute(sql)
 
-        return cursor.fetchone()
+        row = cursor.fetchone()
+        return row
     except Exception as e:
         raise RuntimeError(
             "An unexpected exception occurred while executing query: count_stocks"
@@ -157,6 +161,7 @@ def explain_queries() -> None:
                 "symbol": None,
                 "qty": None,
                 "price": None,
+                "stock_info": None,
             }
 
             cursor.execute(sql, query_args)

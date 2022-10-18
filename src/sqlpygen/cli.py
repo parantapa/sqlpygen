@@ -41,7 +41,7 @@ def cli(input_file, output_file, dbcon, verbose):
     """
     input_ = input_file.read_text()
     try:
-        output = generate(input_, dbcon, verbose)
+        output = generate(input_, input_file.name, dbcon, verbose)
     except RuntimeError as e:
         click.secho(str(e), fg="red")
         sys.exit(1)

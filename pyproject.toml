@@ -23,6 +23,8 @@ dependencies = [
     "lark",
     "jinja2",
     "black",
+    "apsw",
+    "pydantic"
 ]
 
 [tool.setuptools]
