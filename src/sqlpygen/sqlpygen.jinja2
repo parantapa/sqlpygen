@@ -48,46 +48,35 @@ def create_schema(connection: ConnectionType) -> None:
 
 {% for query in queries %}
 
-def {{ query.name }}({{ query.params.fn_params }}) -> {{ query.return_.fn_return }}:
+def {{ query.name }}({{ query.params | fn_params }}) -> {{ query.return_ | fn_return }}:
     """Query {{query.name}}."""
-    {% if query.params.has_params %}
-    {% for conversion_stmt in query.params.conversions %}
+    {% for conversion_stmt in query.params | param_conversions %}
     {{ conversion_stmt }}
     {% endfor %}
-
-    query_args = {{ query.params.query_args }}
-    {% endif %}
 
     cursor = connection.cursor()
     try:
         sql = QUERY["{{ query.name }}"]
 
-        {% if query.params.has_params %}
+        {% if query.params is with_params %}
+        query_args = {{ query.params | query_args }}
         cursor.execute(sql, query_args)
         {% else %}
         cursor.execute(sql)
         {% endif %}
 
-        {% if query.return_.does_return %}
+        {% if query.return_ is with_return %}
         {% if query.return_.returns_one %}
         row = cursor.fetchone()
-        {% if query.return_.conversions %}
-        row = list(row)
-        {% for conversion_stmt in query.return_.conversions %}
+        {% for conversion_stmt in query.return_ | ret_conversions %}
         {{ conversion_stmt }}
         {% endfor %}
-        row = tuple(row)
-        {% endif %}
         return row
         {% else %}
         for row in cursor:
-            {% if query.return_.conversions %}
-            row = list(row)
-            {% for conversion_stmt in query.return_.conversions %}
+            {% for conversion_stmt in query.return_ | ret_conversions %}
             {{ conversion_stmt }}
             {% endfor %}
-            row = tuple(row)
-            {% endif %}
             yield row
         {% endif %}
         {% endif %}
@@ -117,11 +106,8 @@ def explain_queries() -> None:
             sql = QUERY["{{ query.name }}"]
             sql = "EXPLAIN " + sql
 
-            {% if query.params.has_params %}
-            query_args = {{ query.params.explain_args }}
-            {% endif %}
-
-            {% if query.params.has_params %}
+            {% if query.params is with_params %}
+            query_args = {{ query.params | explain_args }}
             cursor.execute(sql, query_args)
             {% else %}
             cursor.execute(sql)

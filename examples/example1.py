@@ -72,19 +72,18 @@ def insert_into_stocks(
     """Query insert_into_stocks."""
     stock_info_json = stock_info.json()
 
-    query_args = {
-        "date": date,
-        "trans": trans,
-        "symbol": symbol,
-        "qty": qty,
-        "price": price,
-        "stock_info": stock_info_json,
-    }
-
     cursor = connection.cursor()
     try:
         sql = QUERY["insert_into_stocks"]
 
+        query_args = {
+            "date": date,
+            "trans": trans,
+            "symbol": symbol,
+            "qty": qty,
+            "price": price,
+            "stock_info": stock_info_json,
+        }
         cursor.execute(sql, query_args)
 
     except Exception as e:
@@ -165,7 +164,6 @@ def explain_queries() -> None:
                 "price": None,
                 "stock_info": None,
             }
-
             cursor.execute(sql, query_args)
 
             table = Table(

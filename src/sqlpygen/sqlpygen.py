@@ -27,28 +27,39 @@ class Parameter:
     simple_type: bool
 
 
+# @dataclass
+# class Parameters:
+#     fn_params: str
+#     conversions: list[str]
+#     query_args: Optional[str]
+#     explain_args: Optional[str]
+#     has_params: bool
+
+
 @dataclass
 class Parameters:
-    fn_params: str
-    conversions: list[str]
-    query_args: Optional[str]
-    explain_args: Optional[str]
-    has_params: bool
+    params: list[Parameter]
 
 
 @dataclass
-class RType:
+class ReturnType:
     type: str
     optional: bool
     simple_type: bool
 
 
+# @dataclass
+# class Return:
+#     fn_return: str
+#     conversions: list[str]
+#     returns_one: Optional[bool]
+#     does_return: bool
+
+
 @dataclass
 class Return:
-    fn_return: str
-    conversions: list[str]
+    rtypes: list[ReturnType]
     returns_one: Optional[bool]
-    does_return: bool
 
 
 @dataclass
@@ -101,29 +112,7 @@ class SqlPyGenTransformer(Transformer):
         return Parameter(pname, ptype, simple_type)
 
     def params(self, ts):
-        fn_params = [f"{p.name}: {p.type}" for p in ts]
-        fn_params = ", ".join(fn_params)
-        fn_params = "connection: ConnectionType, " + fn_params
-
-        conversions = []
-        for p in ts:
-            if not p.simple_type:
-                conversions.append(f"{p.name}_json = {p.name}.json()")
-
-        query_args = []
-        for p in ts:
-            if p.simple_type:
-                query_args.append(f'"{p.name}": {p.name}')
-            else:
-                query_args.append(f'"{p.name}": {p.name}_json')
-        query_args = ", ".join(query_args)
-        query_args = f"{{ {query_args} }}"
-
-        explain_args = [f'"{p.name}": None' for p in ts]
-        explain_args = ", ".join(explain_args)
-        explain_args = f"{{ {explain_args} }}"
-
-        return Parameters(fn_params, conversions, query_args, explain_args, True)
+        return Parameters(list(ts))
 
     def rtype_opt(self, ts):
         rtype = ts[0]
@@ -131,7 +120,7 @@ class SqlPyGenTransformer(Transformer):
             simple_type = True
         else:
             simple_type = False
-        return RType(rtype, True, simple_type)
+        return ReturnType(rtype, True, simple_type)
 
     def rtype_not_opt(self, ts):
         rtype = ts[0]
@@ -139,45 +128,13 @@ class SqlPyGenTransformer(Transformer):
             simple_type = True
         else:
             simple_type = False
-        return RType(rtype, False, simple_type)
+        return ReturnType(rtype, False, simple_type)
 
     def returnone(self, ts):
-        conversions = []
-        for i, r in enumerate(ts):
-            if not r.simple_type:
-                conversions.append(
-                    f"row[{i}] = None if row[{i}] is None else {r.type}.parse_raw(row[{i}])"
-                )
-
-        fn_return = []
-        for r in ts:
-            if r.optional:
-                fn_return.append(f"Optional[{r.type}]")
-            else:
-                fn_return.append(r.type)
-        fn_return = ", ".join(fn_return)
-        fn_return = f"Optional[tuple[{fn_return}]]"
-
-        return Return(fn_return, conversions, True, True)
+        return Return(list(ts), True)
 
     def returnmany(self, ts):
-        conversions = []
-        for i, r in enumerate(ts):
-            if not r.simple_type:
-                conversions.append(
-                    f"row[{i}] = None if row[{i}] is None else {r.type}.parse_raw(row[{i}])"
-                )
-
-        fn_return = []
-        for r in ts:
-            if r.optional:
-                fn_return.append(f"Optional[{r.type}]")
-            else:
-                fn_return.append(r.type)
-        fn_return = ", ".join(fn_return)
-        fn_return = f"Iterable[tuple[{fn_return}]]"
-
-        return Return(fn_return, conversions, False, True)
+        return Return(list(ts), False)
 
     def schema(self, ts):
         name, sql = ts
@@ -185,8 +142,8 @@ class SqlPyGenTransformer(Transformer):
 
     def query(self, ts):
         name, sql = ts[0], ts[-1]
-        params = Parameters("connection: ConnectionType", [], None, None, False)
-        return_ = Return("None", [], None, False)
+        params = Parameters([])
+        return_ = Return([], None)
         for t in ts[1:-1]:
             if isinstance(t, Parameters):
                 params = t
@@ -220,10 +177,101 @@ def get_parser() -> Lark:
     return parser
 
 
+def fn_params(params: Parameters) -> str:
+    if not params.params:
+        return "connection: ConnectionType"
+    x = [f"{p.name}: {p.type}" for p in params.params]
+    x = ", ".join(x)
+    x = "connection: ConnectionType, " + x
+    return x
+
+
+def param_conversions(params: Parameters) -> list[str]:
+    convs = []
+    for p in params.params:
+        if not p.simple_type:
+            convs.append(f"{p.name}_json = {p.name}.json()")
+    return convs
+
+
+def query_args(params: Parameters) -> str:
+    qa = []
+    for p in params.params:
+        if p.simple_type:
+            qa.append(f'"{p.name}": {p.name}')
+        else:
+            qa.append(f'"{p.name}": {p.name}_json')
+    qa = ", ".join(qa)
+    qa = f"{{ {qa} }}"
+    return qa
+
+
+def explain_args(params: Parameters) -> str:
+    ea = [f'"{p.name}": None' for p in params.params]
+    ea = ", ".join(ea)
+    ea = f"{{ {ea} }}"
+    return ea
+
+
+def ret_conversions(ret: Return) -> list[str]:
+    convs = []
+    for i, r in enumerate(ret.rtypes):
+        if not r.simple_type:
+            convs.append(
+                f"row[{i}] = None if row[{i}] is None else {r.type}.parse_raw(row[{i}])"
+            )
+    if convs:
+        convs = ["row = list(row)"] + convs + ["row = tuple(row)"]
+    return convs
+
+
+def fn_return(ret: Return) -> str:
+    if not ret.rtypes:
+        return "None"
+
+    rstr = []
+    for r in ret.rtypes:
+        if r.optional:
+            rstr.append(f"Optional[{r.type}]")
+        else:
+            rstr.append(r.type)
+    rstr = ", ".join(rstr)
+    if ret.returns_one:
+        rstr = f"Optional[tuple[{rstr}]]"
+    else:
+        rstr = f"Iterable[tuple[{rstr}]]"
+    return rstr
+
+
+def with_params(params: Parameters) -> bool:
+    return bool(params.params)
+
+
+def with_return(ret: Return) -> bool:
+    return bool(ret.rtypes)
+
+
 def generate(text: str, src: str, dbcon: str, verbose: bool) -> str:
     """Generate python from annotated sql."""
     parser = get_parser()
     transformer = SqlPyGenTransformer()
+    env = Environment(
+        loader=PackageLoader("sqlpygen", ""),
+        undefined=StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    env.filters.update(
+        dict(
+            fn_params=fn_params,
+            param_conversions=param_conversions,
+            query_args=query_args,
+            explain_args=explain_args,
+            ret_conversions=ret_conversions,
+            fn_return=fn_return,
+        )
+    )
+    env.tests.update(dict(with_params=with_params, with_return=with_return))
 
     if verbose:
         console = Console()
@@ -248,12 +296,6 @@ def generate(text: str, src: str, dbcon: str, verbose: bool) -> str:
         console.rule("Transformed tree")  # type: ignore
         console.print(trans_tree)  # type: ignore
 
-    env = Environment(
-        loader=PackageLoader("sqlpygen", ""),
-        undefined=StrictUndefined,
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
     template = env.get_template("sqlpygen.jinja2")
 
     rendered_tree = template.render(
