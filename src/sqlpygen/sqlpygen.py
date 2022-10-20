@@ -7,7 +7,7 @@ from typing import Optional
 from rich.console import Console
 from black import format_str, Mode  # type: ignore
 from lark import Lark, Transformer, UnexpectedToken  # type: ignore
-from jinja2 import Template, StrictUndefined, TemplateSyntaxError
+from jinja2 import Environment, PackageLoader, StrictUndefined
 
 
 @dataclass
@@ -145,7 +145,9 @@ class SqlPyGenTransformer(Transformer):
         conversions = []
         for i, r in enumerate(ts):
             if not r.simple_type:
-                conversions.append(f"row[{i}] = None if row[{i}] is None else {r.type}.parse_raw(row[{i}])")
+                conversions.append(
+                    f"row[{i}] = None if row[{i}] is None else {r.type}.parse_raw(row[{i}])"
+                )
 
         fn_return = []
         for r in ts:
@@ -162,7 +164,9 @@ class SqlPyGenTransformer(Transformer):
         conversions = []
         for i, r in enumerate(ts):
             if not r.simple_type:
-                conversions.append(f"row[{i}] = None if row[{i}] is None else {r.type}.parse_raw(row[{i}])")
+                conversions.append(
+                    f"row[{i}] = None if row[{i}] is None else {r.type}.parse_raw(row[{i}])"
+                )
 
         fn_return = []
         for r in ts:
@@ -216,23 +220,10 @@ def get_parser() -> Lark:
     return parser
 
 
-def get_template() -> Template:
-    """Return the code generation template."""
-    tpl_text = read_text("sqlpygen", "sqlpygen.jinja2")
-    try:
-        tpl_obj = Template(
-            tpl_text, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined
-        )
-    except TemplateSyntaxError as e:
-        raise ValueError(f"Syntax error in template line {e.lineno}") from e
-    return tpl_obj
-
-
 def generate(text: str, src: str, dbcon: str, verbose: bool) -> str:
     """Generate python from annotated sql."""
     parser = get_parser()
     transformer = SqlPyGenTransformer()
-    template = get_template()
 
     if verbose:
         console = Console()
@@ -256,6 +247,14 @@ def generate(text: str, src: str, dbcon: str, verbose: bool) -> str:
     if verbose:
         console.rule("Transformed tree")  # type: ignore
         console.print(trans_tree)  # type: ignore
+
+    env = Environment(
+        loader=PackageLoader("sqlpygen", ""),
+        undefined=StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    template = env.get_template("sqlpygen.jinja2")
 
     rendered_tree = template.render(
         src=src,
