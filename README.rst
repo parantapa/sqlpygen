@@ -8,6 +8,18 @@ This is in part motivated by sqlc_ project.
 The current version of the tool only supports
 generating code for SQLite3.
 
+Installation
+------------
+
+You can install SqlPyGen using pip.
+
+.. code:: bash
+
+   $ pip install sqlpygen
+
+Example Usage
+-------------
+
 When using sqlpygen to generate Python code from SQL,
 one creates an annotated SQL file.
 
@@ -20,8 +32,7 @@ one creates an annotated SQL file.
   # Lines starting with -- are used to provide SqlPyGen with annotations.
 
   # Using the "module" annotation
-  # we name the python module/file to be generated.
-  # This will create a file called example1.py
+  # we name the python module to be generated.
   -- module: example1
 
   # We use "schema" annotations to annotate
@@ -70,5 +81,23 @@ one creates an annotated SQL file.
   -- return?: count: int!
 
   SELECT COUNT(*) FROM stocks ;
+
+
+Copy and save the above file as ``example1.py``.
+
+Next use the following command to generate the python code.
+
+.. code:: bash
+
+   $ sqlpygen -i example1.sql -o example1.py -d sqlite3
+
+To check the syntax of the sql statements are correct
+one can execute the generated python file.
+
+.. code:: 
+  $ python example1.py
+  Query insert_into_stocks is syntactically valid.
+  Query select_from_stocks is syntactically valid.
+  Query count_stocks is syntactically valid.
 
 .. _sqlc: https://github.com/kyleconroy/sqlc
