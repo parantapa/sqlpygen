@@ -6,9 +6,9 @@ This module has been generated with SqlPyGen from example1.sql.
 from dataclasses import dataclass
 from typing import Optional, Iterable
 
-import apsw
+import sqlite3
 
-ConnectionType = apsw.Connection
+ConnectionType = sqlite3.Connection
 
 SCHEMA = {}
 SCHEMA[
@@ -75,9 +75,9 @@ def create_schema(connection: ConnectionType) -> None:
 
 def insert_into_stocks(
     connection: ConnectionType,
-    date: Optional[str],
-    trans: Optional[str],
-    symbol: Optional[str],
+    date: str,
+    trans: str,
+    symbol: str,
     qty: Optional[float],
     price: Optional[float],
 ) -> None:
@@ -142,13 +142,8 @@ def count_stocks(connection: ConnectionType) -> Optional[CountStocksReturnType]:
 
 
 def explain_queries() -> None:
-    from rich.console import Console
-    from rich.table import Table
-
-    connection = apsw.Connection(":memory:")
+    connection = sqlite3.connect(":memory:")
     create_schema(connection)
-
-    console = Console()
 
     with connection:
         cursor = connection.cursor()
@@ -166,12 +161,7 @@ def explain_queries() -> None:
             }
             cursor.execute(sql, query_args)
 
-            table = Table(
-                title="Query explanation for insert_into_stocks", show_header=False
-            )
-            for row in cursor:
-                table.add_row(*[str(x) for x in row])
-            console.print(table)
+            print("Query insert_into_stocks is syntactically valid.")
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query plan for: insert_into_stocks"
@@ -183,12 +173,7 @@ def explain_queries() -> None:
 
             cursor.execute(sql)
 
-            table = Table(
-                title="Query explanation for select_from_stocks", show_header=False
-            )
-            for row in cursor:
-                table.add_row(*[str(x) for x in row])
-            console.print(table)
+            print("Query select_from_stocks is syntactically valid.")
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query plan for: select_from_stocks"
@@ -200,10 +185,7 @@ def explain_queries() -> None:
 
             cursor.execute(sql)
 
-            table = Table(title="Query explanation for count_stocks", show_header=False)
-            for row in cursor:
-                table.add_row(*[str(x) for x in row])
-            console.print(table)
+            print("Query count_stocks is syntactically valid.")
         except Exception as e:
             raise RuntimeError(
                 "An unexpected exception occurred while executing query plan for: count_stocks"

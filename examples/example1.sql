@@ -5,8 +5,7 @@
 # Lines starting with -- are used to provide SqlPyGen with annotations.
 
 # Using the "module" annotation
-# we name the python module/file to be generated.
-# This will create a file called example1.py
+# we name the python module to be generated.
 -- module: example1
 
 # We use "schema" annotations to annotate
