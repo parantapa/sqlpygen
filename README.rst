@@ -94,7 +94,8 @@ Next use the following command to generate the python code.
 To check the syntax of the sql statements are correct
 one can execute the generated python file.
 
-.. code:: 
+.. code:: bash
+
   $ python example1.py
   Query insert_into_stocks is syntactically valid.
   Query select_from_stocks is syntactically valid.
