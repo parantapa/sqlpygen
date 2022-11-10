@@ -1,21 +1,21 @@
 // SqlPyGen grammar
 
-start: module import_* (schema | query)*
+start: module (schema | query)*
 
 module: "--" "module" ":" CNAME _NEWLINE
-import_: "--" "import" ":" import_str
 schema: "--" "schema" ":" CNAME _NEWLINE sql_str
 query: "--" "query" ":" CNAME _NEWLINE params? return_? sql_str
 
-params: "--" "params" ":" pname_ptype ("," pname_ptype)* _NEWLINE
-pname_ptype: CNAME ":" CNAME
+params: "--" "params" ":" vname_vtype ("," vname_vtype)* _NEWLINE
 
 ?return_: returnone | returnmany
-returnone: "--" "return" "?" ":" rtype ("," rtype)* _NEWLINE
-returnmany: "--" "return" "*" ":" rtype ("," rtype)* _NEWLINE
-?rtype: rtype_opt | rtype_not_opt
-rtype_opt: CNAME
-rtype_not_opt: CNAME "!"
+returnone: "--" "return" "?" ":" vname_vtype ("," vname_vtype)* _NEWLINE
+returnmany: "--" "return" "*" ":" vname_vtype ("," vname_vtype)* _NEWLINE
+
+vname_vtype: CNAME ":" vtype
+?vtype: vtype_opt | vtype_not_opt
+vtype_opt: CNAME
+vtype_not_opt: CNAME "!"
 
 ?sql_str: SQL_STRING _NEWLINE
 SQL_STRING: /(create|drop|insert|update|delete|select).+?;/is  // match upto semicolon

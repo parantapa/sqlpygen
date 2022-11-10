@@ -3,10 +3,8 @@
 This module has been generated with SqlPyGen from {{ src }}.
 """
 
+from dataclasses import dataclass
 from typing import Optional, Iterable
-{% for import_stmt in imports %}
-{{ import_stmt.import_stmt }}
-{% endfor %}
 
 {% if dbcon == "apsw" %}
 import apsw
@@ -32,6 +30,18 @@ QUERY["{{ query.name }}"] = """
 
 {% endfor %}
 
+
+{% for query in queries %}
+{% if query.return_ is with_return %}
+@dataclass
+class {{ query | return_type_name }}:
+    {% for vname_vtype in query.return_.vname_vtypes %}
+    {{ vname_vtype.name }}: {{ vname_vtype.type | py_type }}
+    {% endfor %}
+    
+{% endif %}
+{% endfor %}
+
 def create_schema(connection: ConnectionType) -> None:
     """Create the table schema."""
     with connection:
@@ -48,12 +58,8 @@ def create_schema(connection: ConnectionType) -> None:
 
 {% for query in queries %}
 
-def {{ query.name }}({{ query.params | fn_params }}) -> {{ query.return_ | fn_return }}:
+def {{ query.name }}({{ query.params | fn_params }}) -> {{ query | fn_return }}:
     """Query {{query.name}}."""
-    {% for conversion_stmt in query.params | param_conversions %}
-    {{ conversion_stmt }}
-    {% endfor %}
-
     cursor = connection.cursor()
     try:
         sql = QUERY["{{ query.name }}"]
@@ -68,15 +74,13 @@ def {{ query.name }}({{ query.params | fn_params }}) -> {{ query.return_ | fn_re
         {% if query.return_ is with_return %}
         {% if query.return_.returns_one %}
         row = cursor.fetchone()
-        {% for conversion_stmt in query.return_ | ret_conversions %}
-        {{ conversion_stmt }}
-        {% endfor %}
-        return row
+        if row is None:
+            return None
+        else:
+            return {{ query | ret_conversions }}
         {% else %}
         for row in cursor:
-            {% for conversion_stmt in query.return_ | ret_conversions %}
-            {{ conversion_stmt }}
-            {% endfor %}
+            row = {{ query | ret_conversions }}
             yield row
         {% endif %}
         {% endif %}

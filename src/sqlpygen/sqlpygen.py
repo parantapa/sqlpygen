@@ -21,57 +21,38 @@ class Import:
 
 
 @dataclass
-class Parameter:
-    name: str
-    type: str
-    simple_type: bool
-
-
-# @dataclass
-# class Parameters:
-#     fn_params: str
-#     conversions: list[str]
-#     query_args: Optional[str]
-#     explain_args: Optional[str]
-#     has_params: bool
-
-
-@dataclass
-class Parameters:
-    params: list[Parameter]
-
-
-@dataclass
-class ReturnType:
-    type: str
-    optional: bool
-    simple_type: bool
-
-
-# @dataclass
-# class Return:
-#     fn_return: str
-#     conversions: list[str]
-#     returns_one: Optional[bool]
-#     does_return: bool
-
-
-@dataclass
-class Return:
-    rtypes: list[ReturnType]
-    returns_one: Optional[bool]
-
-
-@dataclass
 class Schema:
     name: str
     sql: str
 
 
 @dataclass
+class VType:
+    name: str
+    maybe_none: bool
+
+
+@dataclass
+class VNameVType:
+    name: str
+    type: VType
+
+
+@dataclass
+class Params:
+    vname_vtypes: list[VNameVType]
+
+
+@dataclass
+class Return:
+    vname_vtypes: list[VNameVType]
+    returns_one: Optional[bool]
+
+
+@dataclass
 class Query:
     name: str
-    params: Parameters
+    params: Params
     return_: Return
     sql: str
 
@@ -103,32 +84,20 @@ class SqlPyGenTransformer(Transformer):
         (name,) = ts
         return Module(name)
 
-    def pname_ptype(self, ts):
-        pname, ptype = ts
-        if ptype in ("str", "bytes", "int", "float", "bool"):
-            simple_type = True
-        else:
-            simple_type = False
-        return Parameter(pname, ptype, simple_type)
+    def vtype_opt(self, ts):
+        (name,) = ts
+        return VType(name, True)
+
+    def vtype_not_opt(self, ts):
+        (name,) = ts
+        return VType(name, False)
+
+    def vname_vtype(self, ts):
+        vname, vtype = ts
+        return VNameVType(vname, vtype)
 
     def params(self, ts):
-        return Parameters(list(ts))
-
-    def rtype_opt(self, ts):
-        rtype = ts[0]
-        if rtype in ("str", "bytes", "int", "float", "bool"):
-            simple_type = True
-        else:
-            simple_type = False
-        return ReturnType(rtype, True, simple_type)
-
-    def rtype_not_opt(self, ts):
-        rtype = ts[0]
-        if rtype in ("str", "bytes", "int", "float", "bool"):
-            simple_type = True
-        else:
-            simple_type = False
-        return ReturnType(rtype, False, simple_type)
+        return Params(list(ts))
 
     def returnone(self, ts):
         return Return(list(ts), True)
@@ -142,10 +111,10 @@ class SqlPyGenTransformer(Transformer):
 
     def query(self, ts):
         name, sql = ts[0], ts[-1]
-        params = Parameters([])
+        params = Params([])
         return_ = Return([], None)
         for t in ts[1:-1]:
-            if isinstance(t, Parameters):
+            if isinstance(t, Params):
                 params = t
             elif isinstance(t, Return):
                 return_ = t
@@ -177,78 +146,76 @@ def get_parser() -> Lark:
     return parser
 
 
-def fn_params(params: Parameters) -> str:
-    if not params.params:
+def return_type_name(query: Query) -> str:
+    xs = query.name.split("_")
+    xs = [x.title() for x in xs]
+    xs = "".join(xs)
+    xs = xs + "ReturnType"
+    return xs
+
+
+def py_type(vtype: VType) -> str:
+    if vtype.maybe_none:
+        return f"Optional[{vtype.name}]"
+    else:
+        return vtype.name
+
+
+def fn_params(params: Params) -> str:
+    if not params.vname_vtypes:
         return "connection: ConnectionType"
-    x = [f"{p.name}: {p.type}" for p in params.params]
-    x = ", ".join(x)
-    x = "connection: ConnectionType, " + x
-    return x
+
+    xs = [(vnt.name, py_type(vnt.type)) for vnt in params.vname_vtypes]
+    xs = [f"{name}: {type}" for name, type in xs]
+    xs = ", ".join(xs)
+    xs = "connection: ConnectionType, " + xs
+    return xs
 
 
-def param_conversions(params: Parameters) -> list[str]:
-    convs = []
-    for p in params.params:
-        if not p.simple_type:
-            convs.append(f"{p.name}_json = {p.name}.json()")
-    return convs
-
-
-def query_args(params: Parameters) -> str:
+def query_args(params: Params) -> str:
     qa = []
-    for p in params.params:
-        if p.simple_type:
-            qa.append(f'"{p.name}": {p.name}')
-        else:
-            qa.append(f'"{p.name}": {p.name}_json')
+    for vnt in params.vname_vtypes:
+        qa.append(f'"{vnt.name}": {vnt.name}')
     qa = ", ".join(qa)
     qa = f"{{ {qa} }}"
     return qa
 
 
-def explain_args(params: Parameters) -> str:
-    ea = [f'"{p.name}": None' for p in params.params]
+def explain_args(params: Params) -> str:
+    ea = [f'"{vnt.name}": None' for vnt in params.vname_vtypes]
     ea = ", ".join(ea)
     ea = f"{{ {ea} }}"
     return ea
 
 
-def ret_conversions(ret: Return) -> list[str]:
-    convs = []
-    for i, r in enumerate(ret.rtypes):
-        if not r.simple_type:
-            convs.append(
-                f"row[{i}] = None if row[{i}] is None else {r.type}.parse_raw(row[{i}])"
-            )
-    if convs:
-        convs = ["row = list(row)"] + convs + ["row = tuple(row)"]
-    return convs
+def ret_conversions(query: Query) -> str:
+    ps = []
+    for i, vnt in enumerate(query.return_.vname_vtypes):
+        p = f"{vnt.name} = row[{i}]"
+        ps.append(p)
+
+    ps = ",".join(ps)
+    rtn = return_type_name(query)
+    return f"{rtn}({ps})"
 
 
-def fn_return(ret: Return) -> str:
-    if not ret.rtypes:
+def fn_return(query: Query) -> str:
+    if not query.return_.vname_vtypes:
         return "None"
 
-    rstr = []
-    for r in ret.rtypes:
-        if r.optional:
-            rstr.append(f"Optional[{r.type}]")
-        else:
-            rstr.append(r.type)
-    rstr = ", ".join(rstr)
-    if ret.returns_one:
-        rstr = f"Optional[tuple[{rstr}]]"
+    rtn = return_type_name(query)
+    if query.return_.returns_one:
+        return f"Optional[{rtn}]"
     else:
-        rstr = f"Iterable[tuple[{rstr}]]"
-    return rstr
+        return f"Iterable[{rtn}]"
 
 
-def with_params(params: Parameters) -> bool:
-    return bool(params.params)
+def with_params(params: Params) -> bool:
+    return bool(params.vname_vtypes)
 
 
 def with_return(ret: Return) -> bool:
-    return bool(ret.rtypes)
+    return bool(ret.vname_vtypes)
 
 
 def generate(text: str, src: str, dbcon: str, verbose: bool) -> str:
@@ -263,8 +230,9 @@ def generate(text: str, src: str, dbcon: str, verbose: bool) -> str:
     )
     env.filters.update(
         dict(
+            return_type_name=return_type_name,
+            py_type=py_type,
             fn_params=fn_params,
-            param_conversions=param_conversions,
             query_args=query_args,
             explain_args=explain_args,
             ret_conversions=ret_conversions,

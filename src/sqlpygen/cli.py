@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 
 import click
+from rich.console import Console
+from rich.traceback import install
 
 from .sqlpygen import generate
 
@@ -39,6 +41,8 @@ def cli(input_file, output_file, dbcon, verbose):
 
     Generated type annotated python code from annotated SQL
     """
+    install(show_locals=False, console=Console(stderr=False), suppress=[click])
+
     input_ = input_file.read_text()
     try:
         output = generate(input_, input_file.name, dbcon, verbose)

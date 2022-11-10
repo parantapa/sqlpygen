@@ -1,6 +1,5 @@
 # This is an exmaple of sqlpygen file
 -- module: example1
--- import: from stock_info import StockInfo
 
 -- schema: table_stocks
 
@@ -9,21 +8,20 @@ CREATE TABLE stocks (
     trans text,
     symbol text,
     qty real,
-    price real,
-    stock_info text
+    price real
 ) ;
 
 -- query: insert_into_stocks
--- params: date: str, trans: str, symbol: str, qty: float, price: float, stock_info: StockInfo
+-- params: date: str, trans: str, symbol: str, qty: float, price: float
 
-INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price, :stock_info) ;
+INSERT INTO stocks VALUES (:date, :trans, :symbol, :qty, :price) ;
 
 -- query: select_from_stocks
--- return*: str, str, str, float, float, StockInfo
+-- return*: date: str, trans: str, symbol: str, qty: float, price: float
 
 SELECT * FROM stocks ;
 
 -- query: count_stocks
--- return?: int!
+-- return?: count: int!
 
 SELECT COUNT(*) FROM stocks ;
