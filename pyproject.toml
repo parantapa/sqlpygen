@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sqlpygen"
-version = "0.0.9"
+version = "0.0.11"
 authors = [
   { name="Parantapa Bhattacharya", email="pb+pypi@parantapa.net" },
 ]
@@ -32,6 +32,9 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.lark", "*.jinja2"]
 
 [project.urls]
 "Homepage" = "http://github.com/parantapa/sqlpygen"
