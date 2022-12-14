@@ -150,7 +150,7 @@ def return_type_name(query: Query) -> str:
     xs = query.name.split("_")
     xs = [x.title() for x in xs]
     xs = "".join(xs)
-    xs = xs + "ReturnType"
+    xs = xs + "Row"
     return xs
 
 
