@@ -28,24 +28,30 @@ from .sqlpygen import generate
     help="Generated python file.",
 )
 @click.option(
-    "-d", "--dbcon",
+    "-d",
+    "--dbcon",
     type=click.Choice(["sqlite3", "apsw"]),
     required=True,
-    help="Database connection type.")
+    help="Database connection type.",
+)
 @click.option(
-    "-v", "--verbose",
+    "-nt",
+    "--no-typeguard",
     is_flag=True,
-    help="Print out intermediate results.")
-def cli(input_file, output_file, dbcon, verbose):
+    help="Do not add typechecked decorator to query args.",
+)
+@click.option("-v", "--verbose", is_flag=True, help="Print out intermediate results.")
+def cli(input_file, output_file, dbcon, no_typeguard, verbose):
     """SqlPyGen
 
     Generated type annotated python code from annotated SQL
     """
     install(show_locals=False, console=Console(stderr=False), suppress=[click])
+    typeguard = not no_typeguard
 
     input_ = input_file.read_text()
     try:
-        output = generate(input_, input_file.name, dbcon, verbose)
+        output = generate(input_, input_file.name, dbcon, typeguard, verbose)
     except RuntimeError as e:
         click.secho(str(e), fg="red")
         sys.exit(1)

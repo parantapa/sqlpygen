@@ -6,6 +6,8 @@ This module has been generated with SqlPyGen from example1.sql.
 from dataclasses import dataclass
 from typing import Optional, Iterable
 
+from typeguard import typechecked
+
 import apsw
 
 ConnectionType = apsw.Connection
@@ -73,6 +75,7 @@ def create_schema(connection: ConnectionType) -> None:
             ) from e
 
 
+@typechecked
 def insert_into_stocks(
     connection: ConnectionType,
     *,
@@ -102,6 +105,7 @@ def insert_into_stocks(
         ) from e
 
 
+@typechecked
 def select_from_stocks(connection: ConnectionType) -> Iterable[SelectFromStocksRow]:
     """Query select_from_stocks."""
     cursor = connection.cursor()
@@ -121,6 +125,7 @@ def select_from_stocks(connection: ConnectionType) -> Iterable[SelectFromStocksR
         ) from e
 
 
+@typechecked
 def count_stocks(connection: ConnectionType) -> Optional[CountStocksRow]:
     """Query count_stocks."""
     cursor = connection.cursor()

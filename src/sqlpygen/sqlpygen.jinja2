@@ -6,6 +6,10 @@ This module has been generated with SqlPyGen from {{ src }}.
 from dataclasses import dataclass
 from typing import Optional, Iterable
 
+{% if typeguard %}
+from typeguard import typechecked
+{% endif %}
+
 {% if dbcon == "apsw" %}
 import apsw
 ConnectionType = apsw.Connection
@@ -58,6 +62,9 @@ def create_schema(connection: ConnectionType) -> None:
 
 {% for query in queries %}
 
+{% if typeguard %}
+@typechecked
+{% endif %}
 def {{ query.name }}({{ query.params | fn_params }}) -> {{ query | fn_return }}:
     """Query {{query.name}}."""
     cursor = connection.cursor()

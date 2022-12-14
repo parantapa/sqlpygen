@@ -218,7 +218,7 @@ def with_return(ret: Return) -> bool:
     return bool(ret.vname_vtypes)
 
 
-def generate(text: str, src: str, dbcon: str, verbose: bool) -> str:
+def generate(text: str, src: str, dbcon: str, typeguard: bool, verbose: bool) -> str:
     """Generate python from annotated sql."""
     parser = get_parser()
     transformer = SqlPyGenTransformer()
@@ -269,6 +269,7 @@ def generate(text: str, src: str, dbcon: str, verbose: bool) -> str:
     rendered_tree = template.render(
         src=src,
         dbcon=dbcon,
+        typeguard=typeguard,
         module=trans_tree.module,
         imports=trans_tree.imports,
         schemas=trans_tree.schemas,
