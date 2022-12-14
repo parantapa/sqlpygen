@@ -168,7 +168,7 @@ def fn_params(params: Params) -> str:
     xs = [(vnt.name, py_type(vnt.type)) for vnt in params.vname_vtypes]
     xs = [f"{name}: {type}" for name, type in xs]
     xs = ", ".join(xs)
-    xs = "connection: ConnectionType, " + xs
+    xs = "connection: ConnectionType, *," + xs
     return xs
 
 
