@@ -6,9 +6,9 @@ This module has been generated with SqlPyGen from example1.sql.
 from dataclasses import dataclass
 from typing import Optional, Iterable
 
-import sqlite3
+import apsw
 
-ConnectionType = sqlite3.Connection
+ConnectionType = apsw.Connection
 
 SCHEMA = {}
 SCHEMA[
@@ -45,7 +45,7 @@ SELECT COUNT(*) FROM stocks
 
 
 @dataclass
-class SelectFromStocksReturnType:
+class SelectFromStocksRow:
     date: Optional[str]
     trans: Optional[str]
     symbol: Optional[str]
@@ -54,7 +54,7 @@ class SelectFromStocksReturnType:
 
 
 @dataclass
-class CountStocksReturnType:
+class CountStocksRow:
     count: int
 
 
@@ -75,11 +75,12 @@ def create_schema(connection: ConnectionType) -> None:
 
 def insert_into_stocks(
     connection: ConnectionType,
+    *,
     date: str,
     trans: str,
     symbol: str,
     qty: Optional[float],
-    price: Optional[float],
+    price: Optional[float]
 ) -> None:
     """Query insert_into_stocks."""
     cursor = connection.cursor()
@@ -101,9 +102,7 @@ def insert_into_stocks(
         ) from e
 
 
-def select_from_stocks(
-    connection: ConnectionType,
-) -> Iterable[SelectFromStocksReturnType]:
+def select_from_stocks(connection: ConnectionType) -> Iterable[SelectFromStocksRow]:
     """Query select_from_stocks."""
     cursor = connection.cursor()
     try:
@@ -112,7 +111,7 @@ def select_from_stocks(
         cursor.execute(sql)
 
         for row in cursor:
-            row = SelectFromStocksReturnType(
+            row = SelectFromStocksRow(
                 date=row[0], trans=row[1], symbol=row[2], qty=row[3], price=row[4]
             )
             yield row
@@ -122,7 +121,7 @@ def select_from_stocks(
         ) from e
 
 
-def count_stocks(connection: ConnectionType) -> Optional[CountStocksReturnType]:
+def count_stocks(connection: ConnectionType) -> Optional[CountStocksRow]:
     """Query count_stocks."""
     cursor = connection.cursor()
     try:
@@ -134,7 +133,7 @@ def count_stocks(connection: ConnectionType) -> Optional[CountStocksReturnType]:
         if row is None:
             return None
         else:
-            return CountStocksReturnType(count=row[0])
+            return CountStocksRow(count=row[0])
     except Exception as e:
         raise RuntimeError(
             "An unexpected exception occurred while executing query: count_stocks"
@@ -142,7 +141,7 @@ def count_stocks(connection: ConnectionType) -> Optional[CountStocksReturnType]:
 
 
 def explain_queries() -> None:
-    connection = sqlite3.connect(":memory:")
+    connection = apsw.Connection(":memory:")
     create_schema(connection)
 
     with connection:
