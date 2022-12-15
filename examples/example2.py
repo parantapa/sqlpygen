@@ -1,6 +1,6 @@
-"""example1
+"""example2
 
-This module has been generated with SqlPyGen from example1.sql.
+This module has been generated with SqlPyGen from example2.sql.
 """
 
 from dataclasses import dataclass
@@ -40,9 +40,9 @@ SELECT * FROM stocks
 """
 
 QUERY[
-    "count_stocks"
+    "select_from_stocks2"
 ] = """
-SELECT COUNT(*) FROM stocks
+SELECT * FROM stocks
 """
 
 
@@ -119,21 +119,20 @@ def select_from_stocks(connection: ConnectionType) -> Iterable[StockRow]:
 
 
 @typechecked
-def count_stocks(connection: ConnectionType) -> Optional[int]:
-    """Query count_stocks."""
+def select_from_stocks2(connection: ConnectionType) -> Iterable[StockRow]:
+    """Query select_from_stocks2."""
     cursor = connection.cursor()
     try:
-        sql = QUERY["count_stocks"]
+        sql = QUERY["select_from_stocks2"]
 
         cursor.execute(sql)
 
-        row = cursor.fetchone()
-        if row is None:
-            return None
-        return None if row[0] is None else int(row[0])
+        for row in cursor:
+            row = StockRow(*row)
+            yield row
     except Exception as e:
         raise RuntimeError(
-            "An unexpected exception occurred while executing query: count_stocks"
+            "An unexpected exception occurred while executing query: select_from_stocks2"
         ) from e
 
 
@@ -176,15 +175,15 @@ def explain_queries() -> None:
             ) from e
 
         try:
-            sql = QUERY["count_stocks"]
+            sql = QUERY["select_from_stocks2"]
             sql = "EXPLAIN " + sql
 
             cursor.execute(sql)
 
-            print("Query count_stocks is syntactically valid.")
+            print("Query select_from_stocks2 is syntactically valid.")
         except Exception as e:
             raise RuntimeError(
-                "An unexpected exception occurred while executing query plan for: count_stocks"
+                "An unexpected exception occurred while executing query plan for: select_from_stocks2"
             ) from e
 
 

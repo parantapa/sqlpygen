@@ -1,8 +1,9 @@
 """Generate type annotated python from SQL."""
 
 from importlib.resources import read_text
+from collections import Counter
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from rich.console import Console
 from black import format_str, Mode  # type: ignore
@@ -13,11 +14,6 @@ from jinja2 import Environment, PackageLoader, StrictUndefined
 @dataclass
 class Module:
     name: str
-
-
-@dataclass
-class Import:
-    import_stmt: str
 
 
 @dataclass
@@ -33,34 +29,39 @@ class VType:
 
 
 @dataclass
-class VNameVType:
+class TypedVar:
     name: str
     type: VType
 
 
 @dataclass
 class Params:
-    vname_vtypes: list[VNameVType]
+    typed_vars: list[TypedVar]
+
+
+@dataclass
+class RowType:
+    name: str
+    typed_vars: list[TypedVar]
 
 
 @dataclass
 class Return:
-    vname_vtypes: list[VNameVType]
+    return_type: Union[VType, RowType]
     returns_one: Optional[bool]
 
 
 @dataclass
 class Query:
     name: str
-    params: Params
-    return_: Return
+    params: Optional[Params]
+    return_: Optional[Return]
     sql: str
 
 
 @dataclass
 class SqlFile:
     module: Optional[Module]
-    imports: list[Import]
     schemas: list[Schema]
     queries: list[Query]
 
@@ -72,13 +73,6 @@ class SqlPyGenTransformer(Transformer):
 
     def SQL_STRING(self, t):
         return t.strip().rstrip(";").strip()
-
-    def IMPORT_STRING(self, t):
-        return " ".join(t.split())
-
-    def import_(self, ts):
-        (import_stmt,) = ts
-        return Import(import_stmt)
 
     def module(self, ts):
         (name,) = ts
@@ -92,18 +86,25 @@ class SqlPyGenTransformer(Transformer):
         (name,) = ts
         return VType(name, False)
 
-    def vname_vtype(self, ts):
+    def typed_var(self, ts):
         vname, vtype = ts
-        return VNameVType(vname, vtype)
+        return TypedVar(vname, vtype)
+
+    def typed_vars(self, ts):
+        return list(ts)
 
     def params(self, ts):
-        return Params(list(ts))
+        return Params(ts[0])
+
+    def row_type(self, ts):
+        rname, tvs = ts
+        return RowType(rname, tvs)
 
     def returnone(self, ts):
-        return Return(list(ts), True)
+        return Return(ts[0], True)
 
     def returnmany(self, ts):
-        return Return(list(ts), False)
+        return Return(ts[0], False)
 
     def schema(self, ts):
         name, sql = ts
@@ -111,8 +112,8 @@ class SqlPyGenTransformer(Transformer):
 
     def query(self, ts):
         name, sql = ts[0], ts[-1]
-        params = Params([])
-        return_ = Return([], None)
+        params = None
+        return_ = None
         for t in ts[1:-1]:
             if isinstance(t, Params):
                 params = t
@@ -124,12 +125,10 @@ class SqlPyGenTransformer(Transformer):
         return Query(name, params, return_, sql)
 
     def start(self, ts):
-        ret = SqlFile(None, [], [], [])
+        ret = SqlFile(None, [], [])
         for t in ts:
             if isinstance(t, Module):
                 ret.module = t
-            elif isinstance(t, Import):
-                ret.imports.append(t)
             elif isinstance(t, Query):
                 ret.queries.append(t)
             elif isinstance(t, Schema):
@@ -146,26 +145,18 @@ def get_parser() -> Lark:
     return parser
 
 
-def return_type_name(query: Query) -> str:
-    xs = query.name.split("_")
-    xs = [x.title() for x in xs]
-    xs = "".join(xs)
-    xs = xs + "Row"
-    return xs
-
-
 def py_type(vtype: VType) -> str:
     if vtype.maybe_none:
-        return f"Optional[{vtype.name}]"
+        return "Optional[%s]" % vtype.name
     else:
         return vtype.name
 
 
-def fn_params(params: Params) -> str:
-    if not params.vname_vtypes:
+def fn_params(params: Optional[Params]) -> str:
+    if params is None:
         return "connection: ConnectionType"
 
-    xs = [(vnt.name, py_type(vnt.type)) for vnt in params.vname_vtypes]
+    xs = [(tv.name, py_type(tv.type)) for tv in params.typed_vars]
     xs = [f"{name}: {type}" for name, type in xs]
     xs = ", ".join(xs)
     xs = "connection: ConnectionType, *," + xs
@@ -174,48 +165,47 @@ def fn_params(params: Params) -> str:
 
 def query_args(params: Params) -> str:
     qa = []
-    for vnt in params.vname_vtypes:
-        qa.append(f'"{vnt.name}": {vnt.name}')
+    for tv in params.typed_vars:
+        qa.append(f'"{tv.name}": {tv.name}')
     qa = ", ".join(qa)
     qa = f"{{ {qa} }}"
     return qa
 
 
 def explain_args(params: Params) -> str:
-    ea = [f'"{vnt.name}": None' for vnt in params.vname_vtypes]
+    ea = [f'"{tv.name}": None' for tv in params.typed_vars]
     ea = ", ".join(ea)
     ea = f"{{ {ea} }}"
     return ea
 
 
-def ret_conversions(query: Query) -> str:
-    ps = []
-    for i, vnt in enumerate(query.return_.vname_vtypes):
-        p = f"{vnt.name} = row[{i}]"
-        ps.append(p)
-
-    ps = ",".join(ps)
-    rtn = return_type_name(query)
-    return f"{rtn}({ps})"
+def ret_conversion(ret: Return) -> str:
+    if isinstance(ret.return_type, VType):
+        return "None if row[0] is None else %s(row[0])" % ret.return_type.name
+    elif isinstance(ret.return_type, RowType):
+        return "%s(*row)" % ret.return_type.name
+    else:
+        raise TypeError("Uexpected type: %r" % ret.return_type)
 
 
-def fn_return(query: Query) -> str:
-    if not query.return_.vname_vtypes:
+def fn_return(ret: Optional[Return]) -> str:
+    if ret is None:
         return "None"
 
-    rtn = return_type_name(query)
-    if query.return_.returns_one:
-        return f"Optional[{rtn}]"
+    if ret.returns_one:
+        if isinstance(ret.return_type, VType):
+            return "Optional[%s]" % ret.return_type.name
+        elif isinstance(ret.return_type, RowType):
+            return "Optional[%s]" % ret.return_type.name
+        else:
+            raise TypeError("Uexpected type: %r" % ret.return_type)
     else:
-        return f"Iterable[{rtn}]"
-
-
-def with_params(params: Params) -> bool:
-    return bool(params.vname_vtypes)
-
-
-def with_return(ret: Return) -> bool:
-    return bool(ret.vname_vtypes)
+        if isinstance(ret.return_type, VType):
+            return "Iterable[%s]" % py_type(ret.return_type)
+        elif isinstance(ret.return_type, RowType):
+            return f"Iterable[%s]" % ret.return_type.name
+        else:
+            raise TypeError("Uexpected type: %r" % ret.return_type)
 
 
 def generate(text: str, src: str, dbcon: str, typeguard: bool, verbose: bool) -> str:
@@ -230,16 +220,14 @@ def generate(text: str, src: str, dbcon: str, typeguard: bool, verbose: bool) ->
     )
     env.filters.update(
         dict(
-            return_type_name=return_type_name,
             py_type=py_type,
             fn_params=fn_params,
             query_args=query_args,
             explain_args=explain_args,
-            ret_conversions=ret_conversions,
             fn_return=fn_return,
+            ret_conversion=ret_conversion,
         )
     )
-    env.tests.update(dict(with_params=with_params, with_return=with_return))
 
     if verbose:
         console = Console()
@@ -266,14 +254,37 @@ def generate(text: str, src: str, dbcon: str, typeguard: bool, verbose: bool) ->
 
     template = env.get_template("sqlpygen.jinja2")
 
+    ctr = Counter(s.name for s in trans_tree.schemas)
+    for name, n in ctr.most_common():
+        if n > 1:
+            raise RuntimeError("Schema %s is defined more than once." % name)
+
+    ctr = Counter(s.name for s in trans_tree.queries)
+    for name, n in ctr.most_common():
+        if n > 1:
+            raise RuntimeError("Query %s is defined more than once." % name)
+
+    row_types = {}
+    for query in trans_tree.queries:
+        if query.return_ is not None and isinstance(query.return_.return_type, RowType):
+            ret = query.return_.return_type
+            if ret.name in row_types:
+                if ret != row_types[ret.name]:
+                    raise RuntimeError(
+                        "Two row types of different kind have the same name: %s"
+                        % ret.name
+                    )
+                continue
+            row_types[ret.name] = ret
+
     rendered_tree = template.render(
         src=src,
         dbcon=dbcon,
         typeguard=typeguard,
         module=trans_tree.module,
-        imports=trans_tree.imports,
         schemas=trans_tree.schemas,
         queries=trans_tree.queries,
+        row_types=list(row_types.values()),
     )
     rendered_tree = format_str(rendered_tree, mode=Mode())
     return rendered_tree

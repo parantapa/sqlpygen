@@ -35,15 +35,13 @@ QUERY["{{ query.name }}"] = """
 {% endfor %}
 
 
-{% for query in queries %}
-{% if query.return_ is with_return %}
+{% for row_type in row_types %}
 @dataclass
-class {{ query | return_type_name }}:
-    {% for vname_vtype in query.return_.vname_vtypes %}
-    {{ vname_vtype.name }}: {{ vname_vtype.type | py_type }}
+class {{ row_type.name }}:
+    {% for tv in row_type.typed_vars %}
+    {{ tv.name }}: {{ tv.type | py_type }}
     {% endfor %}
     
-{% endif %}
 {% endfor %}
 
 def create_schema(connection: ConnectionType) -> None:
@@ -65,29 +63,28 @@ def create_schema(connection: ConnectionType) -> None:
 {% if typeguard %}
 @typechecked
 {% endif %}
-def {{ query.name }}({{ query.params | fn_params }}) -> {{ query | fn_return }}:
+def {{ query.name }}({{ query.params | fn_params }}) -> {{ query.return_ | fn_return }}:
     """Query {{query.name}}."""
     cursor = connection.cursor()
     try:
         sql = QUERY["{{ query.name }}"]
 
-        {% if query.params is with_params %}
+        {% if query.params %}
         query_args = {{ query.params | query_args }}
         cursor.execute(sql, query_args)
         {% else %}
         cursor.execute(sql)
         {% endif %}
 
-        {% if query.return_ is with_return %}
+        {% if query.return_ %}
         {% if query.return_.returns_one %}
         row = cursor.fetchone()
         if row is None:
             return None
-        else:
-            return {{ query | ret_conversions }}
+        return {{ query.return_ | ret_conversion }}
         {% else %}
         for row in cursor:
-            row = {{ query | ret_conversions }}
+            row = {{ query.return_ | ret_conversion }}
             yield row
         {% endif %}
         {% endif %}
@@ -112,7 +109,7 @@ def explain_queries() -> None:
             sql = QUERY["{{ query.name }}"]
             sql = "EXPLAIN " + sql
 
-            {% if query.params is with_params %}
+            {% if query.params %}
             query_args = {{ query.params | explain_args }}
             cursor.execute(sql, query_args)
             {% else %}
@@ -126,4 +123,8 @@ def explain_queries() -> None:
         {% endfor %}
 
 if __name__ == "__main__":
-    explain_queries()
+    try:
+        explain_queries()
+    except RuntimeError as e:
+        print(e)
+        print(e.__cause__)

@@ -2,35 +2,29 @@
 
 start: module (schema | query)*
 
-module: "--" "module" ":" CNAME _NEWLINE
-schema: "--" "schema" ":" CNAME _NEWLINE sql_str
-query: "--" "query" ":" CNAME _NEWLINE params? return_? sql_str
+module: "--" "module" ":" CNAME
+schema: "--" "schema" ":" CNAME SQL_STRING
+query: "--" "query" ":" CNAME params? return_? SQL_STRING
 
-params: "--" "params" ":" vname_vtype ("," vname_vtype)* _NEWLINE
+params: "--" "params" ":" "(" typed_vars ")"
 
 ?return_: returnone | returnmany
-returnone: "--" "return" "?" ":" vname_vtype ("," vname_vtype)* _NEWLINE
-returnmany: "--" "return" "*" ":" vname_vtype ("," vname_vtype)* _NEWLINE
+returnone: "--" "return" "?" ":" ( vtype | row_type )
+returnmany: "--" "return" "*" ":" ( vtype | row_type )
 
-vname_vtype: CNAME ":" vtype
+row_type: CNAME "(" typed_vars ")"
+
+typed_vars: typed_var ("," typed_var )*
+typed_var: CNAME ":" vtype
 ?vtype: vtype_opt | vtype_not_opt
 vtype_opt: CNAME
 vtype_not_opt: CNAME "!"
 
-?sql_str: SQL_STRING _NEWLINE
-SQL_STRING: /(create|drop|insert|update|delete|select).+?;/is  // match upto semicolon
-
-?import_str: IMPORT_STRING _NEWLINE
-IMPORT_STRING: /(from|import).+/ // match upto newline
+SQL_STRING: /(create|drop|insert|update|delete|select).+?;/is
 
 %import common.CNAME
-%import common.NEWLINE -> _NEWLINE
-%import common.WS_INLINE
+%import common.WS
 %import common.SH_COMMENT
 
-EMPTY_LINE: WS_INLINE _NEWLINE
-SH_COMMENT_LINE: SH_COMMENT _NEWLINE
-
-%ignore WS_INLINE
-%ignore EMPTY_LINE
-%ignore SH_COMMENT_LINE
+%ignore WS
+%ignore SH_COMMENT
