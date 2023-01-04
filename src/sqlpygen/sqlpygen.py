@@ -181,7 +181,10 @@ def explain_args(params: Params) -> str:
 
 def ret_conversion(ret: Return) -> str:
     if isinstance(ret.return_type, VType):
-        return "None if row[0] is None else %s(row[0])" % ret.return_type.name
+        if ret.return_type.maybe_none:
+            return "None if row[0] is None else %s(row[0])" % ret.return_type.name
+        else:
+            return "%s(row[0])" % ret.return_type.name
     elif isinstance(ret.return_type, RowType):
         return "%s(*row)" % ret.return_type.name
     else:
