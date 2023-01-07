@@ -1,8 +1,9 @@
 black
 pytest
 pytest-cov
+pytest-profiling
 pytest-xdist
 hypothesis
 ipython
 typeguard
-
+snakeviz

@@ -36,7 +36,7 @@ QUERY["{{ query.name }}"] = """
 
 
 {% for row_type in row_types %}
-@dataclass
+@dataclass(frozen=True)
 class {{ row_type.name }}:
     {% for tv in row_type.typed_vars %}
     {{ tv.name }}: {{ tv.type | py_type }}
