@@ -3,6 +3,7 @@
 This module has been generated with SqlPyGen from example2.sql.
 """
 
+from contextlib import closing
 from dataclasses import dataclass
 from typing import Optional, Iterable
 
@@ -46,7 +47,7 @@ SELECT * FROM stocks
 """
 
 
-@dataclass
+@dataclass(frozen=True)
 class StockRow:
     date: Optional[str]
     trans: Optional[str]
@@ -57,17 +58,12 @@ class StockRow:
 
 def create_schema(connection: ConnectionType) -> None:
     """Create the table schema."""
-    with connection:
-        cursor = connection.cursor()
+    try:
+        sql = SCHEMA["table_stocks"]
 
-        try:
-            sql = SCHEMA["table_stocks"]
-
-            cursor.execute(sql)
-        except Exception as e:
-            raise RuntimeError(
-                "An unexpected exception occurred when creating schema: table_stocks"
-            ) from e
+        connection.execute(sql)
+    except Exception as e:
+        raise RuntimeError("Error executing schema: table_stocks") from e
 
 
 @typechecked
@@ -95,9 +91,7 @@ def insert_into_stocks(
         cursor.execute(sql, query_args)
 
     except Exception as e:
-        raise RuntimeError(
-            "An unexpected exception occurred while executing query: insert_into_stocks"
-        ) from e
+        raise RuntimeError("Error executing query: insert_into_stocks") from e
 
 
 @typechecked
@@ -113,9 +107,7 @@ def select_from_stocks(connection: ConnectionType) -> Iterable[StockRow]:
             row = StockRow(*row)
             yield row
     except Exception as e:
-        raise RuntimeError(
-            "An unexpected exception occurred while executing query: select_from_stocks"
-        ) from e
+        raise RuntimeError("Error executing query: select_from_stocks") from e
 
 
 @typechecked
@@ -131,9 +123,7 @@ def select_from_stocks2(connection: ConnectionType) -> Iterable[StockRow]:
             row = StockRow(*row)
             yield row
     except Exception as e:
-        raise RuntimeError(
-            "An unexpected exception occurred while executing query: select_from_stocks2"
-        ) from e
+        raise RuntimeError("Error executing query: select_from_stocks2") from e
 
 
 def explain_queries() -> None:
@@ -142,49 +132,50 @@ def explain_queries() -> None:
 
     with connection:
         cursor = connection.cursor()
+        with closing(cursor):
 
-        try:
-            sql = QUERY["insert_into_stocks"]
-            sql = "EXPLAIN " + sql
+            try:
+                sql = QUERY["insert_into_stocks"]
+                sql = "EXPLAIN " + sql
 
-            query_args = {
-                "date": None,
-                "trans": None,
-                "symbol": None,
-                "qty": None,
-                "price": None,
-            }
-            cursor.execute(sql, query_args)
+                query_args = {
+                    "date": None,
+                    "trans": None,
+                    "symbol": None,
+                    "qty": None,
+                    "price": None,
+                }
+                cursor.execute(sql, query_args)
 
-            print("Query insert_into_stocks is syntactically valid.")
-        except Exception as e:
-            raise RuntimeError(
-                "An unexpected exception occurred while executing query plan for: insert_into_stocks"
-            ) from e
+                print("Query insert_into_stocks is syntactically valid.")
+            except Exception as e:
+                raise RuntimeError(
+                    "Error executing query plan: insert_into_stocks"
+                ) from e
 
-        try:
-            sql = QUERY["select_from_stocks"]
-            sql = "EXPLAIN " + sql
+            try:
+                sql = QUERY["select_from_stocks"]
+                sql = "EXPLAIN " + sql
 
-            cursor.execute(sql)
+                cursor.execute(sql)
 
-            print("Query select_from_stocks is syntactically valid.")
-        except Exception as e:
-            raise RuntimeError(
-                "An unexpected exception occurred while executing query plan for: select_from_stocks"
-            ) from e
+                print("Query select_from_stocks is syntactically valid.")
+            except Exception as e:
+                raise RuntimeError(
+                    "Error executing query plan: select_from_stocks"
+                ) from e
 
-        try:
-            sql = QUERY["select_from_stocks2"]
-            sql = "EXPLAIN " + sql
+            try:
+                sql = QUERY["select_from_stocks2"]
+                sql = "EXPLAIN " + sql
 
-            cursor.execute(sql)
+                cursor.execute(sql)
 
-            print("Query select_from_stocks2 is syntactically valid.")
-        except Exception as e:
-            raise RuntimeError(
-                "An unexpected exception occurred while executing query plan for: select_from_stocks2"
-            ) from e
+                print("Query select_from_stocks2 is syntactically valid.")
+            except Exception as e:
+                raise RuntimeError(
+                    "Error executing query plan: select_from_stocks2"
+                ) from e
 
 
 if __name__ == "__main__":

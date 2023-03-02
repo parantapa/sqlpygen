@@ -1,4 +1,5 @@
 black
+pyright
 pytest
 pytest-cov
 pytest-profiling

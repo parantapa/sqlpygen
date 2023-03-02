@@ -3,6 +3,7 @@
 This module has been generated with SqlPyGen from {{ src }}.
 """
 
+from contextlib import closing
 from dataclasses import dataclass
 from typing import Optional, Iterable
 
@@ -46,17 +47,14 @@ class {{ row_type.name }}:
 
 def create_schema(connection: ConnectionType) -> None:
     """Create the table schema."""
-    with connection:
-        cursor = connection.cursor()
+    {% for schema in schemas %}
+    try:
+        sql = SCHEMA["{{ schema.name }}"]
 
-        {% for schema in schemas %}
-        try:
-            sql = SCHEMA["{{ schema.name }}"]
-
-            cursor.execute(sql)
-        except Exception as e:
-            raise RuntimeError("An unexpected exception occurred when creating schema: {{ schema.name }}") from e
-        {% endfor %}
+        connection.execute(sql)
+    except Exception as e:
+        raise RuntimeError("Error executing schema: {{ schema.name }}") from e
+    {% endfor %}
 
 {% for query in queries %}
 
@@ -89,7 +87,7 @@ def {{ query.name }}({{ query.params | fn_params }}) -> {{ query.return_ | fn_re
         {% endif %}
         {% endif %}
     except Exception as e:
-        raise RuntimeError("An unexpected exception occurred while executing query: {{ query.name }}") from e
+        raise RuntimeError("Error executing query: {{ query.name }}") from e
 
 {% endfor %}
 
@@ -103,24 +101,25 @@ def explain_queries() -> None:
 
     with connection:
         cursor = connection.cursor()
+        with closing(cursor):
 
-        {% for query in queries %}
-        try:
-            sql = QUERY["{{ query.name }}"]
-            sql = "EXPLAIN " + sql
+            {% for query in queries %}
+            try:
+                sql = QUERY["{{ query.name }}"]
+                sql = "EXPLAIN " + sql
 
-            {% if query.params %}
-            query_args = {{ query.params | explain_args }}
-            cursor.execute(sql, query_args)
-            {% else %}
-            cursor.execute(sql)
-            {% endif %}
+                {% if query.params %}
+                query_args = {{ query.params | explain_args }}
+                cursor.execute(sql, query_args)
+                {% else %}
+                cursor.execute(sql)
+                {% endif %}
 
-            print("Query {{ query.name }} is syntactically valid.")
-        except Exception as e:
-            raise RuntimeError("An unexpected exception occurred while executing query plan for: {{ query.name }}") from e
+                print("Query {{ query.name }} is syntactically valid.")
+            except Exception as e:
+                raise RuntimeError("Error executing query plan: {{ query.name }}") from e
 
-        {% endfor %}
+            {% endfor %}
 
 if __name__ == "__main__":
     try:
