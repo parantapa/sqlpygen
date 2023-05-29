@@ -1,5 +1,6 @@
 black
 pyright
+ruff
 pytest
 pytest-cov
 pytest-profiling
@@ -8,3 +9,5 @@ hypothesis
 ipython
 typeguard
 snakeviz
+py-spy
+scalene
